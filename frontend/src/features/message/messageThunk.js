@@ -17,13 +17,7 @@ export const fetchMessages = createAsyncThunk(
   }
 );
 
-export const markAsRead = createAsyncThunk(
-  "messages/markAsRead",
-  async ( conversationId ) => {
-    const res = await api.markAsReadApi(conversationId);
-    return res.data;
-  }
-);
+
 
 
 export const deleteChat = createAsyncThunk(

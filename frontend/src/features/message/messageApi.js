@@ -6,9 +6,6 @@ export const sendMessageApi = ({userId, message}) =>
 export const getMessagesApi = (id) =>
   api.get(`/messages/${id}`);
 
-export const markAsReadApi = (conversationId) =>
-  api.patch(`/messages/${conversationId}/markAsRead`);
-
 
 export const deleteChatApi = (userId) => {
   return api.delete(`/messages/chat/${userId}`);

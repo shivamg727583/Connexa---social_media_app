@@ -14,11 +14,11 @@ export const connectSocket = (userId) => {
   });
 
   socket.on("connect", () => {
-    console.log("Socket connected:", socket.id);
+    // console.log("Socket connected:", socket.id);
   });
 
   socket.on("disconnect", () => {
-    console.log("Socket disconnected");
+    // console.log("Socket disconnected");
   });
 
   socket.on("connect_error", (error) => {
@@ -34,6 +34,8 @@ export const disconnectSocket = () => {
   if (socket) {
     socket.disconnect();
     socket = null;
-    console.log("Socket disconnected manually");
+    // console.log("Socket disconnected manually");
   }
 };
+
+

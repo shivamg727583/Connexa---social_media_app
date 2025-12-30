@@ -15,7 +15,6 @@ const ChatPage = () => {
   const {
     activeChat,
     onlineUsers,
-    unreadCounts,
     lastMessages,
     conversations,
     typingUsers
@@ -87,7 +86,6 @@ const ChatPage = () => {
           {filteredConversations.map((conv) => {
             const u = conv.user;
             const isOnline = onlineUsers.includes(conv.userId);
-            const unreadCount = unreadCounts[conv.userId] || 0;
             const lastMsg = lastMessages[conv.userId];
             const isMyMessage = lastMsg?.senderId === user?._id;
             const isTyping = typingUsers[conv.userId];
@@ -129,10 +127,8 @@ const ChatPage = () => {
 
                   <div className="flex items-center justify-between">
                     <p
-                      className={`text-sm truncate ${unreadCount > 0
-                          ? "text-gray-900 dark:text-white font-medium"
-                          : "text-gray-500"
-                        } ${ isTyping ? "text-green-500 font-medium":""}`}
+                      className={`text-sm truncate 
+                         ${ isTyping ? "text-green-500 font-medium":""}`}
                     >
                       {isTyping ? "typing..." : lastMsg ? (
                         <>
@@ -146,11 +142,7 @@ const ChatPage = () => {
                       )}
                     </p>
 
-                    {unreadCount > 0 && (
-                      <span className="ml-2 min-w-[20px] h-5 px-2 flex items-center justify-center bg-blue-600 text-white text-xs font-bold rounded-full">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
-                    )}
+                    
                   </div>
                 </div>
               </motion.div>

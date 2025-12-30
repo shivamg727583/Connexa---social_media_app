@@ -13,11 +13,7 @@ const conversationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Message",
     },
-    unreadCount: {
-      type: Map,
-      of: Number,
-      default: {},
-    },
+   
     deletedBy: [
       {
         type: mongoose.Schema.Types.ObjectId,

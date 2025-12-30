@@ -8,18 +8,14 @@ exports.sendMessage = async (req, res) => {
     const { message } = req.body;
 
     if (!message || !message.trim()) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Message cannot be empty" 
+      return res.status(400).json({
+        success: false,
+        message: "Message cannot be empty",
       });
     }
 
     const io = global.io;
     const getReceiverSocketId = global.getReceiverSocketId;
-
-    if (!io || !getReceiverSocketId) {
-      console.error(" Socket.io not initialized properly");
-    }
 
     let conversation = await conversationModel.findOne({
       participants: { $all: [senderId, receiverId] },
@@ -28,24 +24,21 @@ exports.sendMessage = async (req, res) => {
     if (!conversation) {
       conversation = await conversationModel.create({
         participants: [senderId, receiverId],
-        deletedBy: [] 
+        deletedBy: [],
       });
     } else {
-      // If conversation exists but was deleted by sender, restore it for them
-      if (conversation.deletedBy && conversation.deletedBy.includes(senderId)) {
+      // restore chat if deleted
+      if (conversation.deletedBy?.includes(senderId)) {
         conversation.deletedBy = conversation.deletedBy.filter(
-          id => id.toString() !== senderId.toString()
+          (id) => id.toString() !== senderId.toString()
         );
-        await conversation.save();
       }
-      
-      // If conversation was deleted by receiver, restore it for them too when they send a message
-      if (conversation.deletedBy && conversation.deletedBy.includes(receiverId)) {
+      if (conversation.deletedBy?.includes(receiverId)) {
         conversation.deletedBy = conversation.deletedBy.filter(
-          id => id.toString() !== receiverId.toString()
+          (id) => id.toString() !== receiverId.toString()
         );
-        await conversation.save();
       }
+      await conversation.save();
     }
 
     const newMessage = await messageModel.create({
@@ -55,14 +48,10 @@ exports.sendMessage = async (req, res) => {
       message: message.trim(),
     });
 
-
-   
-    const unread = conversation.unreadCount.get(receiverId.toString()) || 0;
-    conversation.unreadCount.set(receiverId.toString(), unread + 1);
     conversation.lastMessage = newMessage._id;
     await conversation.save();
 
-    // Emit to receiver
+    // realtime emit
     if (io && getReceiverSocketId) {
       const receiverSocketId = getReceiverSocketId(receiverId);
       if (receiverSocketId) {
@@ -72,7 +61,7 @@ exports.sendMessage = async (req, res) => {
         });
       }
 
-      // Emit to sender (for multi-device sync)
+      // sender sync (multi-device)
       const senderSocketId = getReceiverSocketId(senderId);
       if (senderSocketId) {
         io.to(senderSocketId).emit("newMessage", {
@@ -82,15 +71,15 @@ exports.sendMessage = async (req, res) => {
       }
     }
 
-    res.status(201).json({ 
-      success: true, 
-      message: newMessage 
+    res.status(201).json({
+      success: true,
+      message: newMessage,
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Failed to send message",
-      error: error.message 
+      error: error.message,
     });
   }
 };
@@ -103,26 +92,27 @@ exports.getMessages = async (req, res) => {
     const limit = 50;
 
     let conversation = await conversationModel.findOne({
-      participants: { $all: [senderId, receiverId] }
+      participants: { $all: [senderId, receiverId] },
     });
 
-    if (conversation && conversation.deletedBy && conversation.deletedBy.includes(senderId)) {
+    if (conversation?.deletedBy?.includes(senderId)) {
       conversation.deletedBy = conversation.deletedBy.filter(
-        id => id.toString() !== senderId.toString()
+        (id) => id.toString() !== senderId.toString()
       );
       await conversation.save();
     }
 
     if (!conversation) {
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         messages: [],
         conversationId: null,
-        unreadCount: 0
       });
     }
 
-    const lastCleared = conversation.clearedAt ? conversation.clearedAt.get(senderId.toString()) : null;
+    const lastCleared = conversation.clearedAt
+      ? conversation.clearedAt.get(senderId.toString())
+      : null;
 
     const query = { conversationId: conversation._id };
     if (lastCleared) {
@@ -136,59 +126,18 @@ exports.getMessages = async (req, res) => {
       .limit(limit)
       .lean();
 
-    const unreadCount = conversation.unreadCount.get(senderId.toString()) || 0;
-
-    res.json({ 
-      success: true, 
-      messages, 
+    res.json({
+      success: true,
+      messages,
       conversationId: conversation._id,
-      unreadCount
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch messages" });
-  }
-};
-
-exports.markAsRead = async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { conversationId } = req.params;
-
-    if (!conversationId || conversationId === "undefined") {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid conversation ID" 
-      });
-    }
-
-    const result = await messageModel.updateMany(
-      { 
-        conversationId, 
-        receiverId: userId, 
-        seen: false 
-      },
-      { seen: true }
-    );
-
-
-    await conversationModel.findByIdAndUpdate(conversationId, {
-      $set: { [`unreadCount.${userId}`]: 0 },
-    });
-
-    res.json({ success: true, modifiedCount: result.modifiedCount });
-  } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to mark messages as read",
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch messages",
     });
   }
 };
-
-
-
-
-
 
 exports.deleteChat = async (req, res) => {
   try {
@@ -196,34 +145,36 @@ exports.deleteChat = async (req, res) => {
     const otherUserId = req.params.userId;
 
     const conversation = await conversationModel.findOne({
-      participants: { $all: [userId, otherUserId] }
+      participants: { $all: [userId, otherUserId] },
     });
 
     if (!conversation) {
-      return res.status(404).json({ success: false, message: "Conversation not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Conversation not found" });
     }
+
     if (!conversation.deletedBy) conversation.deletedBy = [];
     if (!conversation.deletedBy.includes(userId)) {
       conversation.deletedBy.push(userId);
     }
-    if (!conversation.clearedAt) conversation.clearedAt = new Map();
-    conversation.clearedAt.set(userId.toString(), new Date()); 
 
-    if (conversation.unreadCount) {
-        conversation.unreadCount.set(userId.toString(), 0);
-    }
+    if (!conversation.clearedAt) conversation.clearedAt = new Map();
+    conversation.clearedAt.set(userId.toString(), new Date());
 
     await conversation.save();
 
-    res.json({ 
-      success: true, 
-      message: "Chat deleted and history cleared successfully" 
+    res.json({
+      success: true,
+      message: "Chat deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to delete chat" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete chat",
+    });
   }
 };
-
 
 exports.getAllConversations = async (req, res) => {
   try {
@@ -239,16 +190,15 @@ exports.getAllConversations = async (req, res) => {
       .sort({ updatedAt: -1 })
       .lean();
 
-    const conversationsData = conversations.map(conv => {
+    const conversationsData = conversations.map((conv) => {
       const otherUser = conv.participants.find(
-        p => p._id.toString() !== userId
+        (p) => p._id.toString() !== userId
       );
 
       return {
         userId: otherUser._id,
         user: otherUser,
         lastMessage: conv.lastMessage,
-        unreadCount: conv.unreadCount?.[userId] || 0,
         timestamp: conv.updatedAt,
       };
     });

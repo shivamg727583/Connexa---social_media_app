@@ -25,7 +25,6 @@ import {
   fetchMessages,
   sendMessage,
   deleteChat,
-  markAsRead,
 } from "@/features/message/messageThunk";
 import {
   optimisticMessage,
@@ -36,19 +35,15 @@ import { fetchProfileById } from "@/features/auth/authThunks";
 import { getSocket } from "@/services/socket";
 import { formatTime } from "@/lib/formatTime";
 
-
 const Messages = ({ selectedUser, onBack }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { id: routeUserId } = useParams();
 
   const { user, userProfile } = useSelector((state) => state.auth);
-  const {
-    chats,
-    conversationId,
-    onlineUsers,
-    typingUsers,
-  } = useSelector((state) => state.message);
+  const { chats, onlineUsers, typingUsers } = useSelector(
+    (state) => state.message
+  );
 
   const chatUser = selectedUser || userProfile;
   const chatUserId = selectedUser?._id || routeUserId;
@@ -59,7 +54,11 @@ const Messages = ({ selectedUser, onBack }) => {
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  const messages = useMemo(() => chats[chatUserId] || [], [chats, chatUserId]);
+  const messages = useMemo(
+    () => chats[chatUserId] || [],
+    [chats, chatUserId]
+  );
+
   const isOnline = onlineUsers.includes(chatUserId);
   const isTyping = typingUsers[chatUserId];
 
@@ -69,7 +68,6 @@ const Messages = ({ selectedUser, onBack }) => {
     }
   }, [selectedUser, routeUserId, dispatch]);
 
-
   useEffect(() => {
     if (chatUserId) {
       dispatch(setActiveChat(chatUserId));
@@ -77,7 +75,6 @@ const Messages = ({ selectedUser, onBack }) => {
     }
   }, [chatUserId, dispatch]);
 
- 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [chatUserId]);
@@ -85,24 +82,6 @@ const Messages = ({ selectedUser, onBack }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
-
-
-useEffect(() => {
-    if (messages.length > 0 && chatUserId) {
-        const lastMsg = messages[messages.length - 1];
-        
-        if (lastMsg.senderId !== user._id) {
-            const socket = getSocket();
-            socket.emit("markAsRead", {
-                conversationId,
-                userId: chatUserId 
-            });
-            
-             dispatch(markAsRead(conversationId)); 
-        }
-    }
-}, [conversationId, chatUserId, messages, user._id,dispatch]); 
-
 
   const emitTyping = (isTyping) => {
     const socket = getSocket();
@@ -125,7 +104,6 @@ useEffect(() => {
     }, 1500);
   };
 
-
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!message.trim() || isSending) return;
@@ -141,7 +119,6 @@ useEffect(() => {
       receiverId: chatUserId,
       message: text,
       createdAt: new Date().toISOString(),
-      seen: false,
     };
 
     dispatch(
@@ -170,7 +147,6 @@ useEffect(() => {
     navigate(`/profile/${chatUserId}`);
   };
 
- 
   if (!chatUser) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -181,7 +157,6 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col h-full">
-     
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-3">
           <Button
@@ -206,7 +181,13 @@ useEffect(() => {
 
             <div>
               <p className="font-semibold">{chatUser.username}</p>
-              <p className={`text-xs ${isOnline || isTyping ? "text-green-500 font-medium" : "text-gray-500"}`}>
+              <p
+                className={`text-xs ${
+                  isOnline || isTyping
+                    ? "text-green-500 font-medium"
+                    : "text-gray-500"
+                }`}
+              >
                 {isTyping ? "typing..." : isOnline ? "Online" : "Offline"}
               </p>
             </div>
@@ -231,7 +212,6 @@ useEffect(() => {
         </DropdownMenu>
       </div>
 
-     
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         <AnimatePresence>
           {messages.map((msg) => {
@@ -242,7 +222,9 @@ useEffect(() => {
                 key={msg._id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                className={`flex ${
+                  isMine ? "justify-end" : "justify-start"
+                }`}
               >
                 <div
                   className={`px-4 py-2 rounded-2xl max-w-[70%] ${
@@ -253,7 +235,7 @@ useEffect(() => {
                 >
                   <p>{msg.message}</p>
                   <div className="text-xs mt-1 text-right opacity-70">
-                    {isMine && (formatTime(msg.createdAt))} {isMine && (msg.seen ? "✓✓" : "✓")}
+                    {isMine && formatTime(msg.createdAt)}
                   </div>
                 </div>
               </motion.div>

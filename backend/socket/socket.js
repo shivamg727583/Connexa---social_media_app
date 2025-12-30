@@ -39,15 +39,8 @@ const initSocket = (server) => {
       }
     });
 
-    socket.on("markAsRead", ({ conversationId, userId: otherUserId }) => {  
-      const otherSocketId = userSocketMap[otherUserId];
-      if (otherSocketId) {
-        io.to(otherSocketId).emit("markAsRead", {
-          conversationId,
-          userId: socket.handshake.query.userId,
-        });
-      } 
-    });
+  
+
 
 
     socket.on("disconnect", () => {

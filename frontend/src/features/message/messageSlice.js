@@ -1,13 +1,17 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { sendMessage, fetchMessages, deleteChat, fetchAllConversations } from "./messageThunk";
+import {
+  sendMessage,
+  fetchMessages,
+  deleteChat,
+  fetchAllConversations,
+} from "./messageThunk";
 
 const initialState = {
-  chats: {},
+  chats: {},              
   conversationId: null,
-  activeChat: null,
+  activeChat: null,      
   onlineUsers: [],
   typingUsers: {},
-  unreadCounts: {},
   lastMessages: {},
   conversations: [],
   loading: false,
@@ -20,9 +24,7 @@ const messageSlice = createSlice({
   reducers: {
     setActiveChat(state, action) {
       state.activeChat = action.payload;
-      if (action.payload) {
-        state.unreadCounts[action.payload] = 0;
-      }
+     
     },
 
     setOnlineUsers(state, action) {
@@ -36,9 +38,13 @@ const messageSlice = createSlice({
 
     optimisticMessage(state, action) {
       const { userId, message } = action.payload;
-      if (!state.chats[userId]) state.chats[userId] = [];
+
+      if (!state.chats[userId]) {
+        state.chats[userId] = [];
+      }
+
       state.chats[userId].push(message);
-      
+
       state.lastMessages[userId] = {
         message: message.message,
         timestamp: message.createdAt,
@@ -58,60 +64,27 @@ const messageSlice = createSlice({
         (m) => m._id === message._id
       );
 
-      if (!exists) {
-        state.chats[otherUserId].push(message);
-        
-        state.lastMessages[otherUserId] = {
-          message: message.message,
-          timestamp: message.createdAt,
-          senderId: message.senderId,
-        };
+      if (exists) return;
 
-        if (state.activeChat !== otherUserId) {
-          state.unreadCounts[otherUserId] = (state.unreadCounts[otherUserId] || 0) + 1;
-        }
-      }
-    },
+      state.chats[otherUserId].push(message);
 
-    markMessagesAsRead(state, action) {
-      const { conversationId } = action.payload;
-      Object.keys(state.chats).forEach((userId) => {
-        state.chats[userId] = state.chats[userId].map((msg) => {
-          if (msg.conversationId === conversationId && !msg.seen) {
-            return { ...msg, seen: true };
-          }
-          return msg;
-        });
-      });
+      state.lastMessages[otherUserId] = {
+        message: message.message,
+        timestamp: message.createdAt,
+        senderId: message.senderId,
+      };
+
       
-      if (state.activeChat && state.chats[state.activeChat]) {
-         const activeChatMessages = state.chats[state.activeChat];
-         if(activeChatMessages.length > 0 && activeChatMessages[0].conversationId === conversationId){
-             state.unreadCounts[state.activeChat] = 0;
-         }
-      }
-    },
-
-    updateMessageStatus(state, action) {
-      const { userId, messageId, seen } = action.payload;
-      if (state.chats[userId]) {
-        const msg = state.chats[userId].find((m) => m._id === messageId);
-        if (msg) {
-          msg.seen = seen;
-        }
-      }
-    },
-
-    setUnreadCount(state, action) {
-      const { userId, count } = action.payload;
-      state.unreadCounts[userId] = count;
     },
 
     clearChatMessages(state, action) {
       const { userId } = action.payload;
       delete state.chats[userId];
       delete state.lastMessages[userId];
-      delete state.unreadCounts[userId];
+
+      if (state.activeChat === userId) {
+        state.activeChat = null;
+      }
     },
 
     clearMessages() {
@@ -126,13 +99,14 @@ const messageSlice = createSlice({
       })
       .addCase(fetchMessages.fulfilled, (state, action) => {
         state.loading = false;
+
         const userId = action.meta.arg;
-        state.chats[userId] = action.payload.messages;
-        state.conversationId = action.payload.conversationId;
-        state.unreadCounts[userId] = 0;
-        
-        const messages = action.payload.messages;
-        if (messages.length > 0) {
+        const { messages, conversationId } = action.payload;
+
+        state.chats[userId] = messages || [];
+        state.conversationId = conversationId;
+
+        if (messages?.length) {
           const lastMsg = messages[messages.length - 1];
           state.lastMessages[userId] = {
             message: lastMsg.message,
@@ -152,11 +126,11 @@ const messageSlice = createSlice({
       .addCase(fetchAllConversations.fulfilled, (state, action) => {
         state.loading = false;
         state.conversations = action.payload.conversations || [];
-        
-        action.payload.conversations?.forEach(conv => {
+
+        action.payload.conversations?.forEach((conv) => {
           const userId = conv.userId;
-          state.unreadCounts[userId] = conv.unreadCount || 0;
-          
+
+
           if (conv.lastMessage) {
             state.lastMessages[userId] = {
               message: conv.lastMessage.message,
@@ -172,12 +146,12 @@ const messageSlice = createSlice({
       })
 
       .addCase(sendMessage.fulfilled, () => {})
-      
+
       .addCase(deleteChat.fulfilled, (state, action) => {
         const userId = action.meta.arg;
         delete state.chats[userId];
         delete state.lastMessages[userId];
-        delete state.unreadCounts[userId];
+
         if (state.activeChat === userId) {
           state.activeChat = null;
         }
@@ -192,9 +166,6 @@ export const {
   clearMessages,
   setOnlineUsers,
   setTyping,
-  markMessagesAsRead,
-  updateMessageStatus,
-  setUnreadCount,
   clearChatMessages,
 } = messageSlice.actions;
 

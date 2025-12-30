@@ -6,7 +6,6 @@ const isFriends = require("../middlewares/isFriends");
 const {
   sendMessage,
   getMessages,
-  markAsRead,
   deleteChat,
   getAllConversations,
 } = require("../controllers/message.controller");
@@ -18,7 +17,6 @@ router
   .post(isAuthenticated, isFriends, sendMessage)
   .get(isAuthenticated, isFriends, getMessages);
 
-router.route("/:conversationId/markAsRead").patch(isAuthenticated, markAsRead);
 
 router.route("/chat/:userId").delete(isAuthenticated, deleteChat);
 

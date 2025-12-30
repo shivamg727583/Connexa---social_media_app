@@ -5,8 +5,6 @@ import {
   addSocketMessage,
   setOnlineUsers,
   setTyping,
-  markMessagesAsRead,
-  updateMessageStatus,
 } from "@/features/message/messageSlice";
 import { addSocketNotification } from "@/features/notification/notificationSlice";
 import { toast } from "sonner";
@@ -38,15 +36,9 @@ const useSocketEvents = () => {
       dispatch(setTyping({ userId, isTyping }));
     };
 
-    const handleMessageRead = ({ userId,conversationId }) => {
-      dispatch(markMessagesAsRead({ userId,conversationId }));
-    };
+  
 
-    const handleMessageStatusUpdate = ({ userId, messageId, seen }) => {
-      dispatch(updateMessageStatus({ userId, messageId, seen }));
-    };
-
-    const handleNotification = (notification) => {      
+    const handleNotification = (notification) => {
       dispatch(addSocketNotification(notification));
 
       const messageMap = {
@@ -56,7 +48,8 @@ const useSocketEvents = () => {
         post_comment: "commented on your post",
       };
 
-      const message = messageMap[notification.type] || "sent you a notification";
+      const message =
+        messageMap[notification.type] || "sent you a notification";
       const username = notification.sender?.username || "Someone";
 
       toast.success(`${username} ${message}`, {
@@ -68,17 +61,12 @@ const useSocketEvents = () => {
     socket.on("newMessage", handleNewMessage);
     socket.on("getOnlineUsers", handleOnlineUsers);
     socket.on("typing", handleTyping);
-    socket.on("markAsRead",handleMessageRead);
-    socket.on("messageStatusUpdate", handleMessageStatusUpdate);
     socket.on("notification", handleNotification);
-
 
     return () => {
       socket.off("newMessage", handleNewMessage);
       socket.off("getOnlineUsers", handleOnlineUsers);
       socket.off("typing", handleTyping);
-      socket.off("markAsRead", handleMessageRead);
-      socket.off("messageStatusUpdate", handleMessageStatusUpdate);
       socket.off("notification", handleNotification);
     };
   }, [dispatch, user?._id]);
