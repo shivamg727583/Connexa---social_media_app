@@ -49,7 +49,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-console.log("loginnnn")
+
   try {
     if (!email || !password) {
       return res

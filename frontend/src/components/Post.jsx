@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Heart, MessageCircle, Bookmark, MoreHorizontal } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  Bookmark,
+  MoreHorizontal,
+} from "lucide-react";
 
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -12,11 +17,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
+
 import CommentDialog from "./CommentDialog";
-import { likePost, unlikePost } from "@/features/post/postThunks";
+import {
+  toggleLikePost,
+  toggleSavePost,
+} from "@/features/post/postThunks";
 import { useFormatTime } from "@/hooks/useFormatTime";
 
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
+
 const Post = ({ post }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
@@ -27,20 +37,43 @@ const Post = ({ post }) => {
   );
 
   const activePost = reduxPost || post;
-  const likes = activePost.likes || [];
-  const comments = activePost.comments || [];
-  const isLiked = likes.includes(user?._id);
-  const isAuthor = activePost.author?._id === user?._id;
+
+  const isLiked = useMemo(() => {
+    return activePost.likes?.includes(user?._id);
+  }, [activePost.likes, user?._id]);
+
+  const isSaved = useMemo(() => {
+    if (typeof activePost.isSaved === 'boolean') {
+      return activePost.isSaved;
+    }
+    return user?.savedPosts?.includes(activePost._id) || false;
+  }, [activePost.isSaved, activePost._id, user?.savedPosts]);
+
+  const {
+    _id,
+    author,
+    image,
+    caption,
+    likes = [],
+    comments = [],
+    createdAt,
+  } = activePost;
+
+  const isAuthor = author?._id === user?._id;
+  const createdAtTime = useFormatTime(createdAt);
 
   const handleLike = () => {
-    if (isLiked) {
-      dispatch(unlikePost(activePost._id));
-    } else {
-      dispatch(likePost(activePost._id));
-    }
+    dispatch(toggleLikePost(_id));
   };
 
-  const createAtTime = useFormatTime(activePost?.createdAt);
+  const handleSave = () => {
+    dispatch(toggleSavePost(_id));
+  };
+
+  const likeCountText = useMemo(() => {
+    const count = likes.length;
+    return `${count} ${count === 1 ? "like" : "likes"}`;
+  }, [likes.length]);
 
   return (
     <>
@@ -49,23 +82,25 @@ const Post = ({ post }) => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
       >
+       
         <div className="flex items-center justify-between px-4 py-3">
           <Link
-            to={`/profile/${activePost.author?._id}`}
+            to={`/profile/${author?._id}`}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
             <Avatar className="w-10 h-10 ring-2 ring-gray-100 dark:ring-gray-800">
-              <AvatarImage src={activePost.author?.profilePicture} />
+              <AvatarImage src={author?.profilePicture} />
               <AvatarFallback>
-                {activePost.author?.username?.[0]?.toUpperCase()}
+                {author?.username?.[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
+
             <div className="flex flex-col">
               <span className="font-semibold text-sm">
-                {activePost.author?.username}
+                {author?.username}
               </span>
               <span className="text-xs text-gray-500">
-                {createAtTime}
+                {createdAtTime}
               </span>
             </div>
           </Link>
@@ -76,6 +111,7 @@ const Post = ({ post }) => {
                 <MoreHorizontal className="w-5 h-5" />
               </Button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent align="end">
               {isAuthor ? (
                 <>
@@ -94,9 +130,10 @@ const Post = ({ post }) => {
           </DropdownMenu>
         </div>
 
+        {/* Image */}
         <div className="relative w-full bg-black aspect-square">
           <img
-            src={activePost.image}
+            src={image}
             alt="Post"
             className="w-full h-full object-contain"
             loading="lazy"
@@ -106,16 +143,19 @@ const Post = ({ post }) => {
         <div className="px-4 py-3 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
+             
               <motion.button
                 whileTap={{ scale: 1.2 }}
                 onClick={handleLike}
                 className="hover:opacity-70 transition-opacity"
+                aria-label={isLiked ? "Unlike post" : "Like post"}
               >
                 <Heart
-                  className={`w-6 h-6 ${isLiked
+                  className={`w-6 h-6 transition-colors ${
+                    isLiked
                       ? "fill-red-500 text-red-500"
                       : "text-gray-700 dark:text-gray-300"
-                    }`}
+                  }`}
                 />
               </motion.button>
 
@@ -123,6 +163,7 @@ const Post = ({ post }) => {
                 whileTap={{ scale: 1.1 }}
                 onClick={() => setCommentDialogOpen(true)}
                 className="hover:opacity-70 transition-opacity"
+                aria-label="Comment on post"
               >
                 <MessageCircle className="w-6 h-6 text-gray-700 dark:text-gray-300" />
               </motion.button>
@@ -130,27 +171,33 @@ const Post = ({ post }) => {
 
             <motion.button
               whileTap={{ scale: 1.1 }}
+              onClick={handleSave}
               className="hover:opacity-70 transition-opacity"
+              aria-label={isSaved ? "Unsave post" : "Save post"}
             >
-              <Bookmark className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+              <Bookmark
+                className={`w-6 h-6 transition-all ${
+                  isSaved
+                    ? "fill-black text-black dark:fill-white dark:text-white"
+                    : "text-gray-700 dark:text-gray-300"
+                }`}
+              />
             </motion.button>
           </div>
 
           <div className="space-y-1">
-            <p className="font-semibold text-sm">
-              {likes.length} {likes.length === 1 ? "like" : "likes"}
-            </p>
+            <p className="font-semibold text-sm">{likeCountText}</p>
 
-            {activePost.caption && (
+            {caption && (
               <p className="text-sm">
                 <Link
-                  to={`/profile/${activePost.author?._id}`}
+                  to={`/profile/${author?._id}`}
                   className="font-semibold hover:underline mr-2"
                 >
-                  {activePost.author?.username}
+                  {author?.username}
                 </Link>
                 <span className="text-gray-700 dark:text-gray-300">
-                  {activePost.caption}
+                  {caption}
                 </span>
               </p>
             )}
@@ -178,8 +225,17 @@ const Post = ({ post }) => {
   );
 };
 
-export default Post;
-
 Post.propTypes = {
-  post: PropTypes.object.isRequired,
+  post: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    author: PropTypes.object,
+    image: PropTypes.string,
+    caption: PropTypes.string,
+    likes: PropTypes.array,
+    comments: PropTypes.array,
+    createdAt: PropTypes.string,
+    isSaved: PropTypes.bool,
+  }).isRequired,
 };
+
+export default Post;

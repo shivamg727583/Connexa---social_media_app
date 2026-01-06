@@ -21,7 +21,7 @@ app.use(express.json());
 
 app.use("/api/user", require("./routes/user.route"));
 app.use("/api/friends", require("./routes/friend.routes"));
-app.use("/api/post", require("./routes/post.routes"));
+app.use("/api/posts", require("./routes/post.routes"));
 app.use("/api/messages", require("./routes/message.routes"));
 app.use("/api/notifications", require("./routes/notification.routes"));
 

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import Post from "./Post";
 import PostSkeleton from "./ui/PostSkeleton";
+import SuggestedUsersInline from "./suggestedUsersInline";
 
 const Posts = () => {
   const { posts, loading } = useSelector((s) => s.post);
@@ -28,7 +29,7 @@ const Posts = () => {
   return (
     <div className="w-full max-w-xl space-y-8">
       <AnimatePresence>
-        {posts.map((post) => (
+        {posts.map((post,index) => (
           <motion.div
             key={post._id}
             initial={{ opacity: 0, y: 20 }}
@@ -37,6 +38,7 @@ const Posts = () => {
             transition={{ duration: 0.25 }}
           >
             <Post post={post} />
+            {index === 4 && <SuggestedUsersInline />}
           </motion.div>
         ))}
       </AnimatePresence>

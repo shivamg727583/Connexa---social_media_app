@@ -52,6 +52,17 @@ const messageSlice = createSlice({
       };
     },
 
+    addConversation: (state, action) => {
+  const exists = state.conversations.some(
+    c => c.userId === action.payload.userId
+  );
+
+  if (!exists) {
+    state.conversations.unshift(action.payload);
+  }
+}
+,
+
     addSocketMessage(state, action) {
       const { message } = action.payload;
       const otherUserId = message.senderId;
@@ -167,6 +178,7 @@ export const {
   setOnlineUsers,
   setTyping,
   clearChatMessages,
+  addConversation
 } = messageSlice.actions;
 
 export default messageSlice.reducer;

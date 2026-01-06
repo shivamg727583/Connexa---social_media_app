@@ -12,26 +12,53 @@ import { fetchFriends } from "@/features/friends/friendThunks";
 const FriendsPage = () => {
   const dispatch = useDispatch();
   const { id } = useParams();
-  const { userProfile, loading } = useSelector((state) => state.auth);
-  const { friends, loading: friendsLoading } = useSelector((state) => state.friends);
+
+  const { user, userProfile, loading } = useSelector((s) => s.auth);
+  const {
+    myFriends,
+    profileFriends,
+    loading: friendsLoading,
+  } = useSelector((s) => s.friends);
+
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    if (id) {
-      dispatch(fetchProfileById(id));
-      dispatch(fetchFriends(id));
-    }
-  }, [dispatch, id]);
+    if (!user?._id || !id) return;
 
+    dispatch(fetchProfileById(id));
+
+    dispatch(fetchFriends({ userId: user._id, isMe: true }));
+    dispatch(fetchFriends({ userId: id, isMe: false }));
+  }, [dispatch, id, user?._id]);
+
+  const myFriendIds = useMemo(
+    () => myFriends.map((f) => f._id),
+    [myFriends]
+  );
+
+  const listToShow = profileFriends;
+
+  const processedFriends = useMemo(() => {
+    if (!user || !listToShow.length) return listToShow;
+
+    const you = listToShow.find((f) => f._id === user._id);
+    const others = listToShow.filter((f) => f._id !== user._id);
+
+    return you ? [{ ...you, isYou: true }, ...others] : others;
+  }, [listToShow, user]);
+
+ 
   const filteredFriends = useMemo(() => {
-    if (!search.trim()) return friends;
+    if (!search.trim()) return processedFriends;
 
-    return friends.filter((f) =>
-      f?.username?.toLowerCase().includes(search.toLowerCase())
+    return processedFriends.filter((f) =>
+      f.username.toLowerCase().includes(search.toLowerCase())
     );
-  }, [friends, search]);
+  }, [processedFriends, search]);
 
   const isLoading = loading || friendsLoading;
+
+  console.log({listToShow,filteredFriends,processedFriends})
 
   return (
     <motion.div
@@ -40,6 +67,7 @@ const FriendsPage = () => {
       className="min-h-screen bg-gray-50 dark:bg-gray-950"
     >
       <div className="max-w-3xl mx-auto">
+        {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
@@ -50,7 +78,8 @@ const FriendsPage = () => {
                 {userProfile?.username}&apos;s Friends
               </h1>
               <p className="text-sm text-gray-500">
-                {friends.length} {friends.length === 1 ? "friend" : "friends"}
+                {profileFriends.length}{" "}
+                {profileFriends.length === 1 ? "friend" : "friends"}
               </p>
             </div>
           </div>
@@ -66,6 +95,7 @@ const FriendsPage = () => {
           </div>
         </div>
 
+        {/* List */}
         <div className="divide-y divide-gray-200 dark:divide-gray-800">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
@@ -77,16 +107,21 @@ const FriendsPage = () => {
               <p className="text-lg font-medium">
                 {search ? "No friends found" : "No friends yet"}
               </p>
-              <p className="text-sm">
-                {search
-                  ? "Try a different search"
-                  : "Start connecting with people"}
-              </p>
             </div>
           ) : (
-            filteredFriends.map((friend) => (
-              <FriendRow key={friend._id} friend={friend} />
-            ))
+            filteredFriends.map((friend) => {
+              const isYou = friend._id === user._id;
+              const isFriend = myFriendIds.includes(friend._id);
+
+              return (
+                <FriendRow
+                  key={friend._id}
+                  friend={friend}
+                  isFriend={isFriend}
+                  isYou={isYou}
+                />
+              );
+            })
           )}
         </div>
       </div>

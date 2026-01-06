@@ -21,11 +21,14 @@ exports.sendMessage = async (req, res) => {
       participants: { $all: [senderId, receiverId] },
     });
 
+    let isNewConversation = false;
+
     if (!conversation) {
       conversation = await conversationModel.create({
         participants: [senderId, receiverId],
         deletedBy: [],
       });
+      isNewConversation = true;
     } else {
       // restore chat if deleted
       if (conversation.deletedBy?.includes(senderId)) {
@@ -52,8 +55,42 @@ exports.sendMessage = async (req, res) => {
     await conversation.save();
 
     // realtime emit
+
+    if (isNewConversation && io && getReceiverSocketId) {
+      const receiverSocketId = getReceiverSocketId(receiverId);
+      const senderSocketId = getReceiverSocketId(senderId);
+
+      const payloadForReceiver = {
+        userId: senderId,
+        user: {
+          _id: senderId,
+          username: req.user.username,
+          profilePicture: req.user.profilePicture,
+        },
+        lastMessage: {
+          message: newMessage.message,
+          senderId,
+          timestamp: newMessage.createdAt,
+        },
+        timestamp: newMessage.createdAt,
+      };
+
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("newConversation", payloadForReceiver);
+      }
+
+      if (senderSocketId) {
+        io.to(senderSocketId).emit("newConversation", {
+          ...payloadForReceiver,
+          userId: receiverId,
+        });
+      }
+    }
+
     if (io && getReceiverSocketId) {
       const receiverSocketId = getReceiverSocketId(receiverId);
+      const senderSocketId = getReceiverSocketId(senderId);
+
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("newMessage", {
           conversationId: conversation._id,
@@ -61,8 +98,6 @@ exports.sendMessage = async (req, res) => {
         });
       }
 
-      // sender sync (multi-device)
-      const senderSocketId = getReceiverSocketId(senderId);
       if (senderSocketId) {
         io.to(senderSocketId).emit("newMessage", {
           conversationId: conversation._id,

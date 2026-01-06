@@ -72,18 +72,20 @@ export const fetchSentRequests = createAsyncThunk(
   }
 );
 
+
 export const fetchFriends = createAsyncThunk(
-  "friends/list",
-  async (userId, { rejectWithValue }) => {
+  "friends/fetchFriends",
+  async ({ userId, isMe }, { rejectWithValue }) => {
     try {
+      console.log(userId)
       const res = await api.getFriendsApi(userId);
-      
-      return res.data.friends;
+      return { friends: res.data.friends, isMe };
     } catch (e) {
       return rejectWithValue(e.response.data.message);
     }
   }
 );
+
 
 
 export const cancelFriendRequest = createAsyncThunk(

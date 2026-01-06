@@ -14,7 +14,6 @@ import FriendsPage from "./pages/FriendsPage";
 import SearchPage from "./pages/SearchPage";
 
 import {
-  fetchFriends,
   fetchIncomingRequests,
   fetchSentRequests,
 } from "./features/friends/friendThunks";
@@ -28,6 +27,7 @@ import ChatPage from "./pages/ChatPage";
 import MessagesPage from "./pages/MessagePage";
 import NotFoundPage from "./pages/NotFoundPage";
 import PostPage from "./pages/PostPage";
+import SuggestedUsersPage from "./pages/SuggestedUserPage";
 
 const router = createBrowserRouter([
   {
@@ -46,7 +46,8 @@ const router = createBrowserRouter([
       { path: "profile/:id/friends", element: <FriendsPage /> },
       { path: "/search", element: <SearchPage /> },
       { path: "/notifications", element: <NotificationsPage /> },
-      {path:"/post/:id",element:<PostPage/>}
+      {path:"/post/:id",element:<PostPage/>},
+      {path:"/suggested",element:<SuggestedUsersPage/>}
 
     ],
   },
@@ -74,7 +75,6 @@ const App = () => {
     if (!user?._id) return;
 
     
-    dispatch(fetchFriends(user._id));
     dispatch(fetchIncomingRequests());
     dispatch(fetchSentRequests());
     dispatch(fetchNotifications({ page: 1, limit: 20 }));

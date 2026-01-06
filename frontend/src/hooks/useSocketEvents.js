@@ -2,10 +2,17 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getSocket } from "@/services/socket";
 import {
+  addConversation,
   addSocketMessage,
   setOnlineUsers,
   setTyping,
 } from "@/features/message/messageSlice";
+import {
+  addIncomingRequest,
+  removeRequest,
+  addFriend,
+} from "@/features/friends/friendSlice";
+
 import { addSocketNotification } from "@/features/notification/notificationSlice";
 import { toast } from "sonner";
 
@@ -36,7 +43,9 @@ const useSocketEvents = () => {
       dispatch(setTyping({ userId, isTyping }));
     };
 
-  
+    const handleNewConversation = (conversation) => {
+      dispatch(addConversation(conversation));
+    };
 
     const handleNotification = (notification) => {
       dispatch(addSocketNotification(notification));
@@ -58,18 +67,41 @@ const useSocketEvents = () => {
       });
     };
 
+    const handleFriendRequestReceived = ({ request }) => {
+      dispatch(addIncomingRequest(request));
+    };
+
+    const handleFriendRequestAccepted = ({ friend, requestId }) => {
+  dispatch(addFriend(friend));
+  dispatch(removeRequest(requestId));
+};
+
+
+   const handleFriendRequestRejected = ({ requestId }) => {
+  dispatch(removeRequest(requestId));
+};
+
+
     socket.on("newMessage", handleNewMessage);
     socket.on("getOnlineUsers", handleOnlineUsers);
     socket.on("typing", handleTyping);
+    socket.on("newConversation", handleNewConversation);
     socket.on("notification", handleNotification);
+    socket.on("friendRequestReceived", handleFriendRequestReceived);
+    socket.on("friendRequestAccepted", handleFriendRequestAccepted);
+    socket.on("friendRequestRejected", handleFriendRequestRejected);
 
     return () => {
       socket.off("newMessage", handleNewMessage);
       socket.off("getOnlineUsers", handleOnlineUsers);
       socket.off("typing", handleTyping);
+      socket.off("newConversation", handleNewConversation);
       socket.off("notification", handleNotification);
+      socket.off("friendRequestReceived", handleFriendRequestReceived);
+      socket.off("friendRequestAccepted", handleFriendRequestAccepted);
+      socket.off("friendRequestRejected", handleFriendRequestRejected);
     };
-  }, [dispatch, user?._id]);
+  }, [ user?._id]);
 };
 
 export default useSocketEvents;

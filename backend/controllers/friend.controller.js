@@ -57,6 +57,17 @@ exports.sendRequest = async (req, res) => {
       friendRequest: request._id,
     });
 
+    const io = global.io;
+const getReceiverSocketId = global.getReceiverSocketId;
+
+const receiverSocketId = getReceiverSocketId(to);
+if (receiverSocketId) {
+  io.to(receiverSocketId).emit("friendRequestReceived", {
+    request: populatedRequest,
+  });
+}
+
+
     res.status(201).json({
       message: "Friend request sent",
       request: populatedRequest,
@@ -125,6 +136,23 @@ exports.acceptRequest = async (req, res) => {
       friendRequest: request._id,
     });
 
+    const io = global.io;
+const getReceiverSocketId = global.getReceiverSocketId;
+
+// notify sender
+const senderSocketId = getReceiverSocketId(request.from.toString());
+if (senderSocketId) {
+  io.to(senderSocketId).emit("friendRequestAccepted", {
+    friend: {
+      _id: userId,
+      username: accepter.username,
+      profilePicture: accepter.profilePicture,
+    },
+    requestId: request._id,
+  });
+}
+
+
     res.status(200).json({
       message: "Friend request accepted",
       success: true,
@@ -165,6 +193,14 @@ exports.rejectRequest = async (req, res) => {
 
     request.status = "rejected";
     await request.save();
+
+    const receiverSocketId = getReceiverSocketId(request.from.toString());
+if (receiverSocketId) {
+  io.to(receiverSocketId).emit("friendRequestRejected", {
+    requestId,
+  });
+}
+
 
     res.status(200).json({
       message: "Friend request rejected",

@@ -59,6 +59,15 @@ const ProfilePage = () => {
     (post) => post.author?._id === userProfile?._id
   );
 
+  const savedPosts = isOwnProfile
+    ? posts.filter((post) => {
+        const savedPostIds = user?.savedPosts || [];
+        return savedPostIds.some((savedId) => String(savedId) === String(post._id));
+      })
+    : [];
+
+  const displayedPosts = activeTab === "posts" ? profilePosts : savedPosts;
+
   const friendStatus = getFriendStatus(userProfile?._id);
   const buttonText = getButtonText(userProfile?._id);
 
@@ -106,6 +115,7 @@ const ProfilePage = () => {
       animate={{ opacity: 1 }}
       className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
     >
+    
       <div className="flex flex-col sm:flex-row gap-6 sm:gap-10 mb-10">
         <div className="flex justify-center sm:justify-start">
           <Avatar className="w-32 h-32 sm:w-40 sm:h-40 ring-4 ring-gray-100 dark:ring-gray-800">
@@ -170,6 +180,12 @@ const ProfilePage = () => {
                 </p>
               </div>
             </Link>
+            {isOwnProfile && (
+              <div>
+                <p className="font-bold text-lg">{savedPosts.length}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Saved</p>
+              </div>
+            )}
           </div>
 
           {userProfile?.bio && (
@@ -189,6 +205,7 @@ const ProfilePage = () => {
         </div>
       </div>
 
+  
       <div className="border-t border-gray-200 dark:border-gray-800">
         <div className="flex justify-center gap-12 text-sm font-semibold">
           <button
@@ -202,74 +219,102 @@ const ProfilePage = () => {
             <Grid3x3 className="w-4 h-4" />
             <span className="hidden sm:inline">POSTS</span>
           </button>
-          <button
-            onClick={() => setActiveTab("saved")}
-            className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
-              activeTab === "saved"
-                ? "border-gray-900 dark:border-white"
-                : "border-transparent text-gray-400"
-            }`}
-          >
-            <Bookmark className="w-4 h-4" />
-            <span className="hidden sm:inline">SAVED</span>
-          </button>
+
+       
+          {isOwnProfile && (
+            <button
+              onClick={() => setActiveTab("saved")}
+              className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
+                activeTab === "saved"
+                  ? "border-gray-900 dark:border-white"
+                  : "border-transparent text-gray-400"
+              }`}
+            >
+              <Bookmark className="w-4 h-4" />
+              <span className="hidden sm:inline">SAVED</span>
+            </button>
+          )}
         </div>
       </div>
 
+    
       <div className="grid grid-cols-3 gap-1 sm:gap-2 md:gap-4 mt-4">
-        {profilePosts.map((post) => (
-          <motion.div
-            key={post._id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative aspect-square group cursor-pointer overflow-hidden rounded-lg"
-          >
-            <img
-              src={post.image}
-              alt="Post"
-              className="w-full h-full object-cover"
-            />
+        {displayedPosts.map((post) => {
+          const isPostOwner = post.author?._id === user?._id;
 
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 text-white">
-              <div className="flex items-center gap-2">
-                <Heart className="w-5 h-5 fill-white" />
-                <span className="font-semibold">{post.likes?.length || 0}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5 fill-white" />
-                <span className="font-semibold">
-                  {post.comments?.length || 0}
-                </span>
-              </div>
-            </div>
+          return (
+            <motion.div
+              key={post._id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative aspect-square group cursor-pointer overflow-hidden rounded-lg"
+            >
+              <img
+                src={post.image}
+                alt="Post"
+                className="w-full h-full object-cover"
+              />
 
-            {isOwnProfile && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="absolute top-2 right-2 p-2 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">
-                    <MoreHorizontal className="w-4 h-4 text-white" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => handleDeletePost(post._id)}
-                    className="text-red-600 focus:text-red-600"
-                  >
-                    Delete Post
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </motion.div>
-        ))}
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-6 text-white">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 fill-white" />
+                  <span className="font-semibold">{post.likes?.length || 0}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 fill-white" />
+                  <span className="font-semibold">
+                    {post.comments?.length || 0}
+                  </span>
+                </div>
+              </div>
+
+            
+              {isPostOwner && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="absolute top-2 right-2 p-2 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">
+                      <MoreHorizontal className="w-4 h-4 text-white" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleDeletePost(post._id)}
+                      className="text-red-600 focus:text-red-600"
+                    >
+                      Delete Post
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+           
+              {activeTab === "saved" && (
+                <div className="absolute top-2 left-2 p-2 bg-black/50 rounded-full">
+                  <Bookmark className="w-4 h-4 text-white fill-white" />
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
       </div>
 
-      {profilePosts.length === 0 && (
+    
+      {displayedPosts.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-          <Grid3x3 className="w-16 h-16 mb-4 opacity-50" />
-          <p className="text-lg font-medium">No posts yet</p>
-          {isOwnProfile && (
-            <p className="text-sm">Share your first photo or video</p>
+          {activeTab === "posts" ? (
+            <>
+              <Grid3x3 className="w-16 h-16 mb-4 opacity-50" />
+              <p className="text-lg font-medium">No posts yet</p>
+              {isOwnProfile && (
+                <p className="text-sm">Share your first photo or video</p>
+              )}
+            </>
+          ) : (
+            <>
+              <Bookmark className="w-16 h-16 mb-4 opacity-50" />
+              <p className="text-lg font-medium">No saved posts</p>
+              <p className="text-sm">Save posts to see them here</p>
+            </>
           )}
         </div>
       )}

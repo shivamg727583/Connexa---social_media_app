@@ -1,8 +1,8 @@
 const sharp = require("sharp");
 const cloudinary = require("../utils/cloudanary");
-const postModel = require("../models/post.model");
-const userModel = require("../models/user.model");
-const commentModel = require("../models/comment.model");
+const Post = require("../models/post.model");
+const User = require("../models/user.model");
+const Comment = require("../models/comment.model");
 const { createNotification } = require("./notification.controller");
 
 exports.addNewPost = async (req, res) => {
@@ -13,46 +13,45 @@ exports.addNewPost = async (req, res) => {
 
     if (!image) {
       return res.status(400).json({
-        message: "Image required",
         success: false,
+        message: "Image is required",
       });
     }
 
-    const optimizedImageBuffer = await sharp(image.buffer)
+    const optimizedImage = await sharp(image.buffer)
       .resize({ width: 800, height: 800, fit: "inside" })
-      .toFormat("jpeg", { quality: 80 })
+      .jpeg({ quality: 80 })
       .toBuffer();
 
-    const fileUri = `data:image/jpeg;base64,${optimizedImageBuffer.toString(
+    const fileUri = `data:image/jpeg;base64,${optimizedImage.toString(
       "base64"
     )}`;
 
-    const cloudResponse = await cloudinary.uploader.upload(fileUri, {
+    const upload = await cloudinary.uploader.upload(fileUri, {
       folder: "posts",
     });
 
-    const post = await postModel.create({
+    const post = await Post.create({
       author: userId,
-      image: cloudResponse.secure_url,
       caption,
+      image: upload.secure_url,
     });
 
-    await userModel.findByIdAndUpdate(userId, {
+    await User.findByIdAndUpdate(userId, {
       $push: { posts: post._id },
     });
 
-    await post.populate({ path: "author", select: "username profilePicture" });
+    await post.populate("author", "username profilePicture");
 
     return res.status(201).json({
-      message: "Post uploaded successfully",
       success: true,
+      message: "Post created successfully",
       post,
     });
   } catch (error) {
     return res.status(500).json({
-      message: "Something went wrong",
-      error: error.message,
       success: false,
+      message: error.message,
     });
   }
 };
@@ -63,145 +62,138 @@ exports.getAllPost = async (req, res) => {
     const limit = Number(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const posts = await postModel
-      .find()
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("author", "_id username profilePicture")
-      .populate({
-        path: "comments",
-        options: { sort: { createdAt: -1 } },
-        populate: {
-          path: "author",
-          select: "_id username profilePicture",
-        },
-      })
-      .lean();
+    const [posts, total, user] = await Promise.all([
+      Post.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("author", "username profilePicture")
+        .populate({
+          path: "comments",
+          options: { sort: { createdAt: -1 } },
+          populate: {
+            path: "author",
+            select: "username profilePicture",
+          },
+        })
+        .lean(),
+      Post.countDocuments(),
+      User.findById(req.userId).select("savedPosts").lean(),
+    ]);
 
-    const totalPosts = await postModel.countDocuments();
+    // Add isSaved property to each post based on current user's savedPosts
+    const postsWithSaveStatus = posts.map((post) => ({
+      ...post,
+      isSaved: user?.savedPosts?.some(
+        (savedPostId) => savedPostId.toString() === post._id.toString()
+      ) || false,
+    }));
 
-    res.status(200).json({
-      posts,
-      page,
-      totalPages: Math.ceil(totalPosts / limit),
+    return res.status(200).json({
       success: true,
+      posts: postsWithSaveStatus,
+      page,
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message, success: false });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 exports.getUserPosts = async (req, res) => {
   try {
     const userId = req.userId;
-
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 9;
     const skip = (page - 1) * limit;
 
-    const posts = await postModel
-      .find({ author: userId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate({
-        path: "author",
-        select: "_id username profilePicture",
-      })
-      .populate({
-        path: "comments",
-        options: { sort: { createdAt: -1 } },
-        populate: {
-          path: "author",
-          select: "_id username profilePicture",
-        },
-      });
+    const [posts, total, user] = await Promise.all([
+      Post.find({ author: userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("author", "username profilePicture")
+        .lean(),
+      Post.countDocuments({ author: userId }),
+      User.findById(userId).select("savedPosts").lean(),
+    ]);
 
-    const totalPosts = await postModel.countDocuments({ author: userId });
+    // Add isSaved property
+    const postsWithSaveStatus = posts.map((post) => ({
+      ...post,
+      isSaved: user?.savedPosts?.some(
+        (savedPostId) => savedPostId.toString() === post._id.toString()
+      ) || false,
+    }));
 
     return res.status(200).json({
-      posts,
-      totalPosts,
-      totalPages: Math.ceil(totalPosts / limit),
-      page,
       success: true,
+      posts: postsWithSaveStatus,
+      page,
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    return res.status(500).json({
-      message: "Something went wrong",
-      error: error.message,
-      success: false,
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 exports.getUserPostsById = async (req, res) => {
   try {
     const { userId } = req.params;
-
+    const currentUserId = req.userId;
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 9;
     const skip = (page - 1) * limit;
 
-    const posts = await postModel
-      .find({ author: userId })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate("author", "_id username profilePicture")
-      .lean();
+    const [posts, total, currentUser] = await Promise.all([
+      Post.find({ author: userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("author", "username profilePicture")
+        .lean(),
+      Post.countDocuments({ author: userId }),
+      User.findById(currentUserId).select("savedPosts").lean(),
+    ]);
 
-    const totalPosts = await postModel.countDocuments({ author: userId });
+    // Add isSaved property
+    const postsWithSaveStatus = posts.map((post) => ({
+      ...post,
+      isSaved: currentUser?.savedPosts?.some(
+        (savedPostId) => savedPostId.toString() === post._id.toString()
+      ) || false,
+    }));
 
-    res.status(200).json({
-      posts,
-      totalPosts,
-      totalPages: Math.ceil(totalPosts / limit),
-      page,
+    return res.status(200).json({
       success: true,
+      posts: postsWithSaveStatus,
+      page,
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message, success: false });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 exports.getPostById = async (req, res) => {
   try {
     const { postId } = req.params;
-    const post = await postModel
-      .findById(postId)
-      .populate("author", "_id username profilePicture")
-      .populate({
-        path: "comments",
-        options: { sort: { createdAt: -1 } },
-        populate: {
-          path: "author",
-          select: "_id username profilePicture",
-        },
-      })
-      .lean();
-    if (!post) {
-      return res
-        .status(404)
-        .json({ message: "Post not found", success: false });
-    }
-    res.status(200).json({ post, success: true });
-  } catch (error) {
-    res.status(500).json({ message: error.message, success: false });
-  }
-};
+    const currentUserId = req.userId;
 
-exports.likePost = async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { postId } = req.params;
-
-    const post = await postModel.findByIdAndUpdate(
-      postId,
-      { $addToSet: { likes: userId } },
-      { new: true }
-    );
+    const [post, currentUser] = await Promise.all([
+      Post.findById(postId)
+        .populate("author", "username profilePicture")
+        .populate({
+          path: "comments",
+          options: { sort: { createdAt: -1 } },
+          populate: {
+            path: "author",
+            select: "username profilePicture",
+          },
+        })
+        .lean(),
+      User.findById(currentUserId).select("savedPosts").lean(),
+    ]);
 
     if (!post) {
       return res
@@ -209,61 +201,96 @@ exports.likePost = async (req, res) => {
         .json({ success: false, message: "Post not found" });
     }
 
-    const user = await userModel
-      .findById(userId)
-      .select("_id username profilePicture");
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    // Add isSaved property
+    const postWithSaveStatus = {
+      ...post,
+      isSaved: currentUser?.savedPosts?.some(
+        (savedPostId) => savedPostId.toString() === post._id.toString()
+      ) || false,
+    };
+
+    return res.status(200).json({ success: true, post: postWithSaveStatus });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.toggleLikePost = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { postId } = req.params;
+
+    const post = await Post.findById(postId).select("likes author");
+    if (!post) {
+      return res.status(404).json({ success: false, message: "Post not found" });
     }
 
-    const postOwnerId = post.author.toString();
-    
-    if (postOwnerId !== userId) {
+    const isLiked = post.likes.includes(userId);
+
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      isLiked
+        ? { $pull: { likes: userId } }
+        : { $addToSet: { likes: userId } },
+      { new: true }
+    ).select("likes");
+
+    // Create notification if not the author
+    if (!isLiked && post.author.toString() !== userId) {
       await createNotification({
-        recipient: postOwnerId,
+        recipient: post.author,
         sender: userId,
         type: "post_like",
-        message: `${user.username} liked your post`,
+        message: `liked your post`,
         post: postId,
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       postId,
-      likes: post.likes,
+      likes: updatedPost.likes,
+      isLiked: !isLiked,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
-exports.dislikePost = async (req, res) => {
+exports.toggleSavePost = async (req, res) => {
   try {
     const userId = req.userId;
     const { postId } = req.params;
 
-    const post = await postModel.findByIdAndUpdate(
-      postId,
-      { $pull: { likes: userId } },
-      { new: true }
-    );
-
-    if (!post) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Post not found" });
+    // Verify post exists
+    const postExists = await Post.exists({ _id: postId });
+    if (!postExists) {
+      return res.status(404).json({ success: false, message: "Post not found" });
     }
 
-    res.status(200).json({
+    const user = await User.findById(userId).select("savedPosts");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const isSaved = user.savedPosts.some(
+      (id) => id.toString() === postId.toString()
+    );
+
+    await User.findByIdAndUpdate(
+      userId,
+      isSaved
+        ? { $pull: { savedPosts: postId } }
+        : { $addToSet: { savedPosts: postId } }
+    );
+
+    return res.status(200).json({
       success: true,
       postId,
-      likes: post.likes,
+      isSaved: !isSaved,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -273,72 +300,48 @@ exports.addComment = async (req, res) => {
     const userId = req.userId;
     const { text } = req.body;
 
-    if (!text) {
+    if (!text?.trim()) {
       return res
         .status(400)
-        .json({ message: "Text is required", success: false });
+        .json({ success: false, message: "Comment text required" });
     }
 
-    const post = await postModel.findById(postId);
+    const post = await Post.findById(postId).select("author");
     if (!post) {
       return res
         .status(404)
-        .json({ message: "Post not found", success: false });
+        .json({ success: false, message: "Post not found" });
     }
 
-    const comment = await commentModel.create({
+    const comment = await Comment.create({
       text,
       author: userId,
       post: postId,
     });
 
-    await comment.populate("author", "username profilePicture");
+    await Post.findByIdAndUpdate(postId, {
+      $push: { comments: comment._id },
+    });
 
-    post.comments.push(comment._id);
-    await post.save();
-
-    const commenter = await userModel
-      .findById(userId)
-      .select("username");
-
-    //  Create notification
-    const postOwnerId = post.author.toString();
-    if (postOwnerId !== userId) {
+    if (post.author.toString() !== userId) {
       await createNotification({
-        recipient: postOwnerId,
+        recipient: post.author,
         sender: userId,
         type: "post_comment",
-        message: `${commenter.username} commented on your post`,
+        message: `commented on your post`,
         post: postId,
         comment: comment._id,
       });
     }
 
-    res.status(201).json({
-      message: "Comment added",
+    await comment.populate("author", "username profilePicture");
+
+    return res.status(201).json({
       success: true,
       comment,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message, success: false });
-  }
-};
-
-exports.getCommentsOfPost = async (req, res) => {
-  try {
-    const { postId } = req.params;
-
-    const comments = await commentModel
-      .find({ post: postId })
-      .sort({ createdAt: -1 })
-      .populate("author", "username profilePicture");
-
-    res.status(200).json({
-      success: true,
-      comments,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message, success: false });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -347,19 +350,15 @@ exports.deletePost = async (req, res) => {
     const { postId } = req.params;
     const userId = req.userId;
 
-    const post = await postModel.findById(postId);
+    const post = await Post.findById(postId);
     if (!post) {
-      return res.status(404).json({
-        message: "Post not found",
-        success: false,
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Post not found" });
     }
 
     if (post.author.toString() !== userId) {
-      return res.status(403).json({
-        message: "You are not allowed to delete this post",
-        success: false,
-      });
+      return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
     if (post.image) {
@@ -367,23 +366,61 @@ exports.deletePost = async (req, res) => {
       await cloudinary.uploader.destroy(`posts/${publicId}`);
     }
 
-    await commentModel.deleteMany({ post: postId });
+    await Promise.all([
+      Comment.deleteMany({ post: postId }),
+      User.updateMany(
+        { $or: [{ posts: postId }, { savedPosts: postId }] },
+        { $pull: { posts: postId, savedPosts: postId } }
+      ),
+      Post.findByIdAndDelete(postId),
+    ]);
 
-    await userModel.findByIdAndUpdate(userId, {
-      $pull: { posts: postId },
-    });
-
-    await postModel.findByIdAndDelete(postId);
-
-    res.status(200).json({
+    return res.status(200).json({
+      success: true,
       message: "Post deleted successfully",
       postId,
-      success: true,
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getCommentsOfPost = async (req, res) => {
+  try {
+    const { postId } = req.params;
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const postExists = await Post.exists({ _id: postId });
+    if (!postExists) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
+
+    const [comments, total] = await Promise.all([
+      Comment.find({ post: postId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("author", "username profilePicture")
+        .lean(),
+      Comment.countDocuments({ post: postId }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      comments,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    return res.status(500).json({
       success: false,
+      message: error.message,
     });
   }
 };
@@ -393,40 +430,47 @@ exports.deleteComment = async (req, res) => {
     const { commentId } = req.params;
     const userId = req.userId;
 
-    const comment = await commentModel.findById(commentId);
+    const comment = await Comment.findById(commentId).select("author post");
     if (!comment) {
       return res.status(404).json({
-        message: "Comment not found",
         success: false,
+        message: "Comment not found",
       });
     }
 
-    const post = await postModel.findById(comment.post);
+    const post = await Post.findById(comment.post).select("author");
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        message: "Post not found",
+      });
+    }
 
     const isCommentOwner = comment.author.toString() === userId;
-    const isPostOwner = post && post.author.toString() === userId;
+    const isPostOwner = post.author.toString() === userId;
 
     if (!isCommentOwner && !isPostOwner) {
       return res.status(403).json({
-        message: "You are not allowed to delete this comment",
         success: false,
+        message: "You are not allowed to delete this comment",
       });
     }
 
-    await postModel.findByIdAndUpdate(comment.post, {
-      $pull: { comments: commentId },
-    });
+    await Promise.all([
+      Comment.findByIdAndDelete(commentId),
+      Post.findByIdAndUpdate(comment.post, {
+        $pull: { comments: commentId },
+      }),
+    ]);
 
-    await commentModel.findByIdAndDelete(commentId);
-
-    res.status(200).json({
-      message: "Comment deleted successfully",
+    return res.status(200).json({
       success: true,
+      message: "Comment deleted successfully",
     });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
+    return res.status(500).json({
       success: false,
+      message: error.message,
     });
   }
 };

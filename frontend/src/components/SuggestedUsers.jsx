@@ -57,9 +57,9 @@ const SuggestedUsers = () => {
     <div className="my-10">
       <div className="flex items-center justify-between text-sm mb-4">
         <h1 className="font-semibold text-gray-600">Suggested for you</h1>
-        <span className="font-medium cursor-pointer hover:text-gray-800 transition-colors">
+        <Link to="/suggested" className="font-medium cursor-pointer hover:text-gray-800 transition-colors">
           See All
-        </span>
+        </Link>
       </div>
 
       <div className="space-y-4">

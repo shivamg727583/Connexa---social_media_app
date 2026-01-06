@@ -11,7 +11,8 @@ import {
 } from "./friendThunks";
 
 const initialState = {
-  friends: [],
+  profileFriends: [],
+  myFriends: [],
   requests: [],
   sentRequests: [],
   mutualFriends: {},
@@ -24,6 +25,34 @@ const friendSlice = createSlice({
   initialState,
   reducers: {
     resetFriendState: () => initialState,
+
+    addIncomingRequest: (state, action) => {
+      const exists = state.requests.some((r) => r._id === action.payload._id);
+      if (!exists) {
+        state.requests.unshift(action.payload);
+      }
+    },
+
+   addFriend: (state, action) => {
+  const friend = action.payload;
+
+  if (!state.myFriends.some(f => f._id === friend._id)) {
+    state.myFriends.unshift(friend);
+  }
+
+  state.requests = state.requests.filter(
+    r => r.from !== friend._id && r.from?._id !== friend._id
+  );
+
+  state.sentRequests = state.sentRequests.filter(
+    r => r.to !== friend._id && r.to?._id !== friend._id
+  );
+},
+
+
+    removeRequest: (state, action) => {
+      state.requests = state.requests.filter((r) => r._id !== action.payload);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -47,14 +76,19 @@ const friendSlice = createSlice({
         state.error = null;
       })
       .addCase(acceptFriendRequest.fulfilled, (state, action) => {
-        state.loading = false;
-        state.requests = state.requests.filter(
-          (r) => r._id !== action.payload.requestId
-        );
-        if (action.payload.friend) {
-          state.friends.push(action.payload.friend);
-        }
-      })
+  state.loading = false;
+
+  state.requests = state.requests.filter(
+    r => r._id !== action.payload.requestId
+  );
+
+  if (action.payload.friend) {
+    if (!state.myFriends.some(f => f._id === action.payload.friend._id)) {
+      state.myFriends.push(action.payload.friend);
+    }
+  }
+})
+
       .addCase(acceptFriendRequest.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -70,6 +104,7 @@ const friendSlice = createSlice({
         state.requests = state.requests.filter(
           (r) => r._id !== action.payload.requestId
         );
+         
       })
       .addCase(rejectFriendRequest.rejected, (state, action) => {
         state.loading = false;
@@ -111,8 +146,14 @@ const friendSlice = createSlice({
       })
       .addCase(fetchFriends.fulfilled, (state, action) => {
         state.loading = false;
-        state.friends = action.payload;
+
+        if (action.payload.isMe) {
+          state.myFriends = action.payload.friends;
+        } else {
+          state.profileFriends = action.payload.friends;
+        }
       })
+
       .addCase(fetchFriends.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -147,5 +188,10 @@ const friendSlice = createSlice({
   },
 });
 
-export const { resetFriendState } = friendSlice.actions;
+export const {
+  resetFriendState,
+  addIncomingRequest,
+  addFriend,
+  removeRequest,
+} = friendSlice.actions;
 export default friendSlice.reducer;

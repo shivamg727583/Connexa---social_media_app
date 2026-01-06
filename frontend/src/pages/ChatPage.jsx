@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import Messages from "./MessagePage";
 import { setActiveChat } from "@/features/message/messageSlice";
 import { formatTime } from "@/lib/formatTime";
+import { fetchAllConversations } from "@/features/message/messageThunk";
 
 const ChatPage = () => {
   const dispatch = useDispatch();
@@ -39,6 +40,10 @@ const ChatPage = () => {
     return () => {
       dispatch(setActiveChat(null));
     };
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchAllConversations());
   }, [dispatch]);
 
   const openChat = (userId) => {
@@ -97,8 +102,8 @@ const ChatPage = () => {
                 whileHover={{ backgroundColor: "rgba(0,0,0,0.02)" }}
                 onClick={() => openChat(conv.userId)}
                 className={`flex items-center gap-3 p-4 cursor-pointer transition-colors ${activeChat === conv.userId
-                    ? "bg-blue-50 dark:bg-blue-900/20"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-900"
+                  ? "bg-blue-50 dark:bg-blue-900/20"
+                  : "hover:bg-gray-50 dark:hover:bg-gray-900"
                   }`}
               >
                 <div className="relative flex-shrink-0">
@@ -120,7 +125,7 @@ const ChatPage = () => {
 
                     {lastMsg && (
                       <span className="text-xs text-gray-500">
-                        {formatTime( lastMsg.timestamp  )}
+                        {formatTime(lastMsg.timestamp)}
                       </span>
                     )}
                   </div>
@@ -128,7 +133,7 @@ const ChatPage = () => {
                   <div className="flex items-center justify-between">
                     <p
                       className={`text-sm truncate 
-                         ${ isTyping ? "text-green-500 font-medium":""}`}
+                         ${isTyping ? "text-green-500 font-medium" : ""}`}
                     >
                       {isTyping ? "typing..." : lastMsg ? (
                         <>
@@ -142,7 +147,7 @@ const ChatPage = () => {
                       )}
                     </p>
 
-                    
+
                   </div>
                 </div>
               </motion.div>

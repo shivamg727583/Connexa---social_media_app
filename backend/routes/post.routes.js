@@ -1,63 +1,48 @@
 const express = require("express");
 const router = express.Router();
+
 const isAuthenticated = require("../middlewares/auth.middleware");
+const upload = require("../middlewares/multer");
 
 const {
   addNewPost,
   getAllPost,
   getUserPosts,
   getUserPostsById,
+  getPostById,
   deletePost,
-  likePost,
-  dislikePost,
-  addComment,
-  getCommentsOfPost, 
-  deleteComment,
-  getPostById
-} = require("../controllers/post.controller");
-const upload = require("../middlewares/multer");
 
+  toggleLikePost,
+  toggleSavePost,
+
+  addComment,
+  getCommentsOfPost,
+  deleteComment,
+} = require("../controllers/post.controller");
 
 router
   .route("/")
   .post(isAuthenticated, upload.single("image"), addNewPost)
   .get(isAuthenticated, getAllPost);
 
+router.route("/me").get(isAuthenticated, getUserPosts);
 
-router
-  .route("/me")
-  .get(isAuthenticated, getUserPosts);
-
-
-router
-  .route("/user/:userId")
-  .get(isAuthenticated, getUserPostsById);
-
+router.route("/user/:userId").get(isAuthenticated, getUserPostsById);
 
 router
   .route("/:postId")
-  .delete(isAuthenticated, deletePost)
-  .get(isAuthenticated, getPostById);
+  .get(isAuthenticated, getPostById)
+  .delete(isAuthenticated, deletePost);
 
-router
-  .route("/:postId/like")
-  .put(isAuthenticated, likePost);
+router.route("/:postId/like").put(isAuthenticated, toggleLikePost);
 
-router
-  .route("/:postId/unlike")
-  .put(isAuthenticated, dislikePost);
-
+router.route("/:postId/save").put(isAuthenticated, toggleSavePost);
 
 router
   .route("/:postId/comments")
   .post(isAuthenticated, addComment)
   .get(isAuthenticated, getCommentsOfPost);
 
-
-router
-  .route("/comments/:commentId")
-  .delete(isAuthenticated, deleteComment);
-
-
+router.route("/comments/:commentId").delete(isAuthenticated, deleteComment);
 
 module.exports = router;
