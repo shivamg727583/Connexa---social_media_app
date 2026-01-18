@@ -1,39 +1,21 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowLeft,
-  Send,
-  MoreVertical,
-  Trash2,
-  Loader2,
-} from "lucide-react";
+import {  AnimatePresence } from "framer-motion";
+import { ArrowLeft, Send, MoreVertical, Trash2, Loader2 } from "lucide-react";
 import PropTypes from "prop-types";
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-import {
-  fetchMessages,
-  sendMessage,
-  deleteChat,
-} from "@/features/message/messageThunk";
-import {
-  optimisticMessage,
-  setActiveChat,
-} from "@/features/message/messageSlice";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { fetchMessages, sendMessage, deleteChat } from "@/features/message/messageThunk";
+import { optimisticMessage, setActiveChat } from "@/features/message/messageSlice";
 import { fetchProfileById } from "@/features/auth/authThunks";
-
 import { getSocket } from "@/services/socket";
-import { formatTime } from "@/lib/formatTime";
+import MessageBubble from "@/components/chats/MessageBubble";
+
+
+
 
 const Messages = ({ selectedUser, onBack }) => {
   const dispatch = useDispatch();
@@ -41,9 +23,7 @@ const Messages = ({ selectedUser, onBack }) => {
   const { id: routeUserId } = useParams();
 
   const { user, userProfile } = useSelector((state) => state.auth);
-  const { chats, onlineUsers, typingUsers } = useSelector(
-    (state) => state.message
-  );
+  const { chats, onlineUsers, typingUsers } = useSelector((state) => state.message);
 
   const chatUser = selectedUser || userProfile;
   const chatUserId = selectedUser?._id || routeUserId;
@@ -54,10 +34,7 @@ const Messages = ({ selectedUser, onBack }) => {
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  const messages = useMemo(
-    () => chats[chatUserId] || [],
-    [chats, chatUserId]
-  );
+  const messages = useMemo(() => chats[chatUserId] || [], [chats, chatUserId]);
 
   const isOnline = onlineUsers.includes(chatUserId);
   const isTyping = typingUsers[chatUserId];
@@ -121,12 +98,7 @@ const Messages = ({ selectedUser, onBack }) => {
       createdAt: new Date().toISOString(),
     };
 
-    dispatch(
-      optimisticMessage({
-        userId: chatUserId,
-        message: tempMessage,
-      })
-    );
+    dispatch(optimisticMessage({ userId: chatUserId, message: tempMessage }));
 
     try {
       await dispatch(sendMessage({ userId: chatUserId, message: text }));
@@ -143,51 +115,33 @@ const Messages = ({ selectedUser, onBack }) => {
     onBack?.();
   };
 
-  const goToProfile = () => {
-    navigate(`/profile/${chatUserId}`);
-  };
+  const goToProfile = () => navigate(`/profile/${chatUserId}`);
 
   if (!chatUser) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin" />
+        <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin" />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onBack}
-            className="md:hidden"
-          >
-            <ArrowLeft />
+      <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-b">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden">
+            <ArrowLeft className="w-5 h-5" />
           </Button>
 
-          <div
-            onClick={goToProfile}
-            className="flex items-center gap-3 cursor-pointer"
-          >
-            <Avatar>
+          <div onClick={goToProfile} className="flex items-center gap-2 sm:gap-3 cursor-pointer">
+            <Avatar className="w-9 h-9 sm:w-10 sm:h-10">
               <AvatarImage src={chatUser.profilePicture} />
-              <AvatarFallback>
-                {chatUser.username?.[0]?.toUpperCase()}
-              </AvatarFallback>
+              <AvatarFallback>{chatUser.username?.[0]?.toUpperCase()}</AvatarFallback>
             </Avatar>
 
             <div>
-              <p className="font-semibold">{chatUser.username}</p>
-              <p
-                className={`text-xs ${
-                  isOnline || isTyping
-                    ? "text-green-500 font-medium"
-                    : "text-gray-500"
-                }`}
-              >
+              <p className="font-semibold text-sm sm:text-base">{chatUser.username}</p>
+              <p className={`text-xs ${isOnline || isTyping ? "text-green-500 font-medium" : "text-gray-500"}`}>
                 {isTyping ? "typing..." : isOnline ? "Online" : "Offline"}
               </p>
             </div>
@@ -197,14 +151,11 @@ const Messages = ({ selectedUser, onBack }) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
-              <MoreVertical />
+              <MoreVertical className="w-5 h-5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={handleDeleteChat}
-              className="text-red-600"
-            >
+            <DropdownMenuItem onClick={handleDeleteChat} className="text-red-600">
               <Trash2 className="w-4 h-4 mr-2" />
               Delete Chat
             </DropdownMenuItem>
@@ -212,51 +163,25 @@ const Messages = ({ selectedUser, onBack }) => {
         </DropdownMenu>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-3 sm:py-4 space-y-3">
         <AnimatePresence>
-          {messages.map((msg) => {
-            const isMine = msg.senderId === user._id;
-
-            return (
-              <motion.div
-                key={msg._id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex ${
-                  isMine ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`px-4 py-2 rounded-2xl max-w-[70%] ${
-                    isMine
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-200 dark:bg-gray-800"
-                  }`}
-                >
-                  <p>{msg.message}</p>
-                  <div className="text-xs mt-1 text-right opacity-70">
-                    {isMine && formatTime(msg.createdAt)}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
+          {messages.map((msg) => (
+            <MessageBubble key={msg._id} msg={msg} isMine={msg.senderId === user._id} />
+          ))}
         </AnimatePresence>
         <div ref={messagesEndRef} />
       </div>
 
-      <form
-        onSubmit={handleSendMessage}
-        className="flex gap-2 px-4 py-3 border-t"
-      >
+      <form onSubmit={handleSendMessage} className="flex gap-2 px-3 sm:px-4 py-3 border-t">
         <Input
           value={message}
           onChange={handleInputChange}
           placeholder="Type a message..."
           disabled={isSending}
+          className="h-10 sm:h-11 text-sm sm:text-base"
         />
-        <Button type="submit" disabled={!message.trim() || isSending}>
-          {isSending ? <Loader2 className="animate-spin" /> : <Send />}
+        <Button type="submit" disabled={!message.trim() || isSending} className="px-3 sm:px-4">
+          {isSending ? <Loader2 className="animate-spin w-4 h-4 sm:w-5 sm:h-5" /> : <Send className="w-4 h-4 sm:w-5 sm:h-5" />}
         </Button>
       </form>
     </div>
@@ -269,3 +194,4 @@ Messages.propTypes = {
 };
 
 export default Messages;
+

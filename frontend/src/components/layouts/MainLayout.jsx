@@ -1,8 +1,8 @@
 import { Outlet } from "react-router-dom";
 import { motion } from "framer-motion";
-import LeftSidebar from "./LeftSidebar";
+import LeftSidebar from "@/components/layouts/LeftSidebar";
 
-const MainLayout = () => {
+ const MainLayout = () => {
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-gray-950">
       <LeftSidebar />

@@ -1,4 +1,5 @@
-import api from "../../services/api";
+import api from "@/services/api";
+
 
 export const sendRequestApi = (data) => api.post("/friends/send-request", data);
 export const acceptRequestApi = (data) =>

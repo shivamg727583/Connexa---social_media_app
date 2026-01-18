@@ -8,16 +8,14 @@ const ProtectedRoutes = ({ children }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) {
-      navigate("/login", { replace: true });
-    }
+    if (!user) navigate("/login", { replace: true });
   }, [user, navigate]);
 
-  return <>{children}</>;
+  return user ? <>{children}</> : null;
 };
-
-export default ProtectedRoutes;
 
 ProtectedRoutes.propTypes = {
   children: PropTypes.node.isRequired,
 };
+
+export default ProtectedRoutes;

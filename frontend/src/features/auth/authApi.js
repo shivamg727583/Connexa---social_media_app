@@ -1,4 +1,4 @@
-import api from "../../services/api";
+import api from "@/services/api";
 
 export const registerApi = (data) => api.post("/user/register", data);
 export const loginApi = (data) => api.post("/user/login", data);

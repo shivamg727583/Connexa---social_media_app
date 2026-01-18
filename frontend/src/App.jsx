@@ -2,12 +2,12 @@ import { useEffect } from "react";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 
-import MainLayout from "./components/MainLayout";
-import ProtectedRoutes from "./components/ProtectedRoutes";
-import EditProfile from "./components/EditProfile";
+import MainLayout from "./components/layouts/MainLayout";
+import ProtectedRoutes from "./components/auth/ProtectedRoutes";
+import EditProfile from "./components/profile/EditProfile";
 
-import Login from "./components/Login";
-import Signup from "./components/Signup";
+import Login from "./components/auth/Login";
+import Signup from "./components/auth/Signup";
 
 import NotificationsPage from "./pages/NotificationPage";
 import FriendsPage from "./pages/FriendsPage";
