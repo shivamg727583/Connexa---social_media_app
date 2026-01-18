@@ -4,6 +4,7 @@ import {
   fetchMessages,
   deleteChat,
   fetchAllConversations,
+  fetchGroupMessages,
 } from "./messageThunk";
 
 const initialState = {
@@ -24,7 +25,6 @@ const messageSlice = createSlice({
   reducers: {
     setActiveChat(state, action) {
       state.activeChat = action.payload;
-     
     },
 
     setOnlineUsers(state, action) {
@@ -53,39 +53,33 @@ const messageSlice = createSlice({
     },
 
     addConversation: (state, action) => {
-  const exists = state.conversations.some(
-    c => c.userId === action.payload.userId
-  );
+      const exists = state.conversations.some(
+        c => c.userId === action.payload.userId
+      );
 
-  if (!exists) {
-    state.conversations.unshift(action.payload);
-  }
-}
-,
+      if (!exists) {
+        state.conversations.unshift(action.payload);
+      }
+    },
 
     addSocketMessage(state, action) {
       const { message } = action.payload;
-      const otherUserId = message.senderId;
 
-      if (!state.chats[otherUserId]) {
-        state.chats[otherUserId] = [];
+      const chatId = message.receiverType === "GROUP" 
+        ? message.receiverId 
+        : message.senderId;
+
+      if (!state.chats[chatId]) {
+        state.chats[chatId] = [];
       }
 
-      const exists = state.chats[otherUserId].some(
+      const exists = state.chats[chatId].some(
         (m) => m._id === message._id
       );
 
-      if (exists) return;
-
-      state.chats[otherUserId].push(message);
-
-      state.lastMessages[otherUserId] = {
-        message: message.message,
-        timestamp: message.createdAt,
-        senderId: message.senderId,
-      };
-
-      
+      if (!exists) {
+        state.chats[chatId].push(message);
+      }
     },
 
     clearChatMessages(state, action) {
@@ -131,6 +125,19 @@ const messageSlice = createSlice({
         state.error = action.payload;
       })
 
+      .addCase(fetchGroupMessages.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchGroupMessages.fulfilled, (state, action) => {
+        state.loading = false;
+        const { groupId, messages } = action.payload;
+        state.chats[groupId] = messages || [];
+      })
+      .addCase(fetchGroupMessages.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
       .addCase(fetchAllConversations.pending, (state) => {
         state.loading = true;
       })
@@ -140,7 +147,6 @@ const messageSlice = createSlice({
 
         action.payload.conversations?.forEach((conv) => {
           const userId = conv.userId;
-
 
           if (conv.lastMessage) {
             state.lastMessages[userId] = {

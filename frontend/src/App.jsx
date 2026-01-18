@@ -28,6 +28,9 @@ import MessagesPage from "./pages/MessagePage";
 import NotFoundPage from "./pages/NotFoundPage";
 import PostPage from "./pages/PostPage";
 import SuggestedUsersPage from "./pages/SuggestedUserPage";
+import GroupsPage from "./pages/GroupPage";
+import GroupDetailPage from "./pages/GroupDetailPage";
+import { fetchAllPosts } from "./features/post/postThunks";
 
 const router = createBrowserRouter([
   {
@@ -47,7 +50,9 @@ const router = createBrowserRouter([
       { path: "/search", element: <SearchPage /> },
       { path: "/notifications", element: <NotificationsPage /> },
       {path:"/post/:id",element:<PostPage/>},
-      {path:"/suggested",element:<SuggestedUsersPage/>}
+      {path:"/suggested",element:<SuggestedUsersPage/>},
+      {path:"/groups",element:<GroupsPage />},
+      {path:"/groups/:id",element:<GroupDetailPage />}
 
     ],
   },
@@ -77,6 +82,7 @@ const App = () => {
     
     dispatch(fetchIncomingRequests());
     dispatch(fetchSentRequests());
+    dispatch(fetchAllPosts())
     dispatch(fetchNotifications({ page: 1, limit: 20 }));
     dispatch(fetchAllConversations());
   }, [dispatch, user?._id]);

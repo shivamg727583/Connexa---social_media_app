@@ -21,6 +21,8 @@ const notificationSchema = new mongoose.Schema(
         "post_like",
         "post_comment",
         "comment_reply",
+        "group_join_request",
+    "group_join_approved",
       ],
       required: true,
     },

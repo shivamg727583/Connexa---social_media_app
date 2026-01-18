@@ -47,6 +47,19 @@ const useSocketEvents = () => {
       dispatch(addConversation(conversation));
     };
 
+    const handleGroupMessage = (data) => {
+      dispatch(addSocketMessage({ message: data.message }));
+    };
+
+    const handleGroupTyping = ({ groupId, userId, isTyping }) => {
+      dispatch(
+        setTyping({
+          userId: `${groupId}_${userId}`,
+          isTyping,
+        })
+      );
+    };
+
     const handleNotification = (notification) => {
       dispatch(addSocketNotification(notification));
 
@@ -55,6 +68,7 @@ const useSocketEvents = () => {
         friend_accept: "accepted your friend request",
         post_like: "liked your post",
         post_comment: "commented on your post",
+        
       };
 
       const message =
@@ -72,20 +86,21 @@ const useSocketEvents = () => {
     };
 
     const handleFriendRequestAccepted = ({ friend, requestId }) => {
-  dispatch(addFriend(friend));
-  dispatch(removeRequest(requestId));
-};
+      dispatch(addFriend(friend));
+      dispatch(removeRequest(requestId));
+    };
 
-
-   const handleFriendRequestRejected = ({ requestId }) => {
-  dispatch(removeRequest(requestId));
-};
-
+    const handleFriendRequestRejected = ({ requestId }) => {
+      dispatch(removeRequest(requestId));
+    };
 
     socket.on("newMessage", handleNewMessage);
     socket.on("getOnlineUsers", handleOnlineUsers);
     socket.on("typing", handleTyping);
     socket.on("newConversation", handleNewConversation);
+    socket.on("groupMessage", handleGroupMessage);
+    socket.on("groupTyping", handleGroupTyping);
+
     socket.on("notification", handleNotification);
     socket.on("friendRequestReceived", handleFriendRequestReceived);
     socket.on("friendRequestAccepted", handleFriendRequestAccepted);
@@ -96,12 +111,14 @@ const useSocketEvents = () => {
       socket.off("getOnlineUsers", handleOnlineUsers);
       socket.off("typing", handleTyping);
       socket.off("newConversation", handleNewConversation);
+      socket.off("groupMessage", handleGroupMessage);
+      socket.off("groupTyping", handleGroupTyping);
       socket.off("notification", handleNotification);
       socket.off("friendRequestReceived", handleFriendRequestReceived);
       socket.off("friendRequestAccepted", handleFriendRequestAccepted);
       socket.off("friendRequestRejected", handleFriendRequestRejected);
     };
-  }, [ user?._id]);
+  }, [user?._id, dispatch]);
 };
 
 export default useSocketEvents;

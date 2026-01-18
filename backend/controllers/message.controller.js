@@ -1,5 +1,6 @@
-const conversationModel = require("../models/conversation.model");
-const messageModel = require("../models/message.model");
+const Conversation = require("../models/conversation.model");
+const Message = require("../models/message.model");
+const Group = require("../models/group.model");
 
 exports.sendMessage = async (req, res) => {
   try {
@@ -7,46 +8,37 @@ exports.sendMessage = async (req, res) => {
     const receiverId = req.params.id;
     const { message } = req.body;
 
-    if (!message || !message.trim()) {
+    if (!message?.trim()) {
       return res.status(400).json({
         success: false,
         message: "Message cannot be empty",
       });
     }
 
-    const io = global.io;
-    const getReceiverSocketId = global.getReceiverSocketId;
-
-    let conversation = await conversationModel.findOne({
+    let conversation = await Conversation.findOne({
       participants: { $all: [senderId, receiverId] },
     });
 
     let isNewConversation = false;
 
     if (!conversation) {
-      conversation = await conversationModel.create({
+      conversation = await Conversation.create({
         participants: [senderId, receiverId],
         deletedBy: [],
+        clearedAt: new Map(),
       });
       isNewConversation = true;
     } else {
-      // restore chat if deleted
-      if (conversation.deletedBy?.includes(senderId)) {
-        conversation.deletedBy = conversation.deletedBy.filter(
-          (id) => id.toString() !== senderId.toString()
-        );
-      }
-      if (conversation.deletedBy?.includes(receiverId)) {
-        conversation.deletedBy = conversation.deletedBy.filter(
-          (id) => id.toString() !== receiverId.toString()
-        );
-      }
+      conversation.deletedBy = conversation.deletedBy.filter(
+        (id) => !id.equals(senderId) && !id.equals(receiverId)
+      );
       await conversation.save();
     }
 
-    const newMessage = await messageModel.create({
+    const newMessage = await Message.create({
       conversationId: conversation._id,
       senderId,
+      receiverType: "USER",
       receiverId,
       message: message.trim(),
     });
@@ -54,64 +46,46 @@ exports.sendMessage = async (req, res) => {
     conversation.lastMessage = newMessage._id;
     await conversation.save();
 
-    // realtime emit
-
-    if (isNewConversation && io && getReceiverSocketId) {
-      const receiverSocketId = getReceiverSocketId(receiverId);
-      const senderSocketId = getReceiverSocketId(senderId);
-
-      const payloadForReceiver = {
-        userId: senderId,
-        user: {
-          _id: senderId,
-          username: req.user.username,
-          profilePicture: req.user.profilePicture,
-        },
-        lastMessage: {
-          message: newMessage.message,
-          senderId,
-          timestamp: newMessage.createdAt,
-        },
-        timestamp: newMessage.createdAt,
-      };
-
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("newConversation", payloadForReceiver);
-      }
-
-      if (senderSocketId) {
-        io.to(senderSocketId).emit("newConversation", {
-          ...payloadForReceiver,
-          userId: receiverId,
-        });
-      }
-    }
+    const io = global.io;
+    const getReceiverSocketId = global.getReceiverSocketId;
 
     if (io && getReceiverSocketId) {
       const receiverSocketId = getReceiverSocketId(receiverId);
       const senderSocketId = getReceiverSocketId(senderId);
 
-      if (receiverSocketId) {
-        io.to(receiverSocketId).emit("newMessage", {
-          conversationId: conversation._id,
-          message: newMessage,
-        });
-      }
+      const payload = {
+        conversationId: conversation._id,
+        message: newMessage,
+      };
 
-      if (senderSocketId) {
-        io.to(senderSocketId).emit("newMessage", {
-          conversationId: conversation._id,
-          message: newMessage,
-        });
+      if (receiverSocketId) io.to(receiverSocketId).emit("newMessage", payload);
+      if (senderSocketId) io.to(senderSocketId).emit("newMessage", payload);
+
+      if (isNewConversation) {
+        const convoPayload = {
+          userId: senderId,
+          lastMessage: newMessage,
+          timestamp: newMessage.createdAt,
+        };
+
+        if (receiverSocketId) {
+          io.to(receiverSocketId).emit("newConversation", convoPayload);
+        }
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("newConversation", {
+            ...convoPayload,
+            userId: receiverId,
+          });
+        }
       }
     }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: newMessage,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to send message",
       error: error.message,
@@ -126,16 +100,9 @@ exports.getMessages = async (req, res) => {
     const page = Number(req.query.page) || 1;
     const limit = 50;
 
-    let conversation = await conversationModel.findOne({
+    const conversation = await Conversation.findOne({
       participants: { $all: [senderId, receiverId] },
     });
-
-    if (conversation?.deletedBy?.includes(senderId)) {
-      conversation.deletedBy = conversation.deletedBy.filter(
-        (id) => id.toString() !== senderId.toString()
-      );
-      await conversation.save();
-    }
 
     if (!conversation) {
       return res.json({
@@ -145,31 +112,37 @@ exports.getMessages = async (req, res) => {
       });
     }
 
-    const lastCleared = conversation.clearedAt
-      ? conversation.clearedAt.get(senderId.toString())
-      : null;
+    conversation.deletedBy = conversation.deletedBy.filter(
+      (id) => !id.equals(senderId)
+    );
+    await conversation.save();
 
-    const query = { conversationId: conversation._id };
-    if (lastCleared) {
-      query.createdAt = { $gt: lastCleared };
+    const clearedAt = conversation.clearedAt?.get(senderId.toString());
+
+    const query = {
+      conversationId: conversation._id,
+    };
+
+    if (clearedAt) {
+      query.createdAt = { $gt: clearedAt };
     }
 
-    const messages = await messageModel
-      .find(query)
+    const messages = await Message.find(query)
       .sort({ createdAt: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
 
-    res.json({
+    return res.json({
       success: true,
       messages,
       conversationId: conversation._id,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch messages",
+      error: error.message,
     });
   }
 };
@@ -179,18 +152,18 @@ exports.deleteChat = async (req, res) => {
     const userId = req.userId;
     const otherUserId = req.params.userId;
 
-    const conversation = await conversationModel.findOne({
+    const conversation = await Conversation.findOne({
       participants: { $all: [userId, otherUserId] },
     });
 
     if (!conversation) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Conversation not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
     }
 
-    if (!conversation.deletedBy) conversation.deletedBy = [];
-    if (!conversation.deletedBy.includes(userId)) {
+    if (!conversation.deletedBy.some((id) => id.equals(userId))) {
       conversation.deletedBy.push(userId);
     }
 
@@ -199,14 +172,15 @@ exports.deleteChat = async (req, res) => {
 
     await conversation.save();
 
-    res.json({
+    return res.json({
       success: true,
-      message: "Chat deleted successfully",
+      message: "Chat cleared successfully",
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to delete chat",
+      error: error.message,
     });
   }
 };
@@ -215,17 +189,16 @@ exports.getAllConversations = async (req, res) => {
   try {
     const userId = req.userId.toString();
 
-    const conversations = await conversationModel
-      .find({
-        participants: userId,
-        deletedBy: { $ne: userId },
-      })
+    const conversations = await Conversation.find({
+      participants: userId,
+      deletedBy: { $ne: userId },
+    })
       .populate("participants", "_id username profilePicture")
       .populate("lastMessage")
       .sort({ updatedAt: -1 })
       .lean();
 
-    const conversationsData = conversations.map((conv) => {
+    const data = conversations.map((conv) => {
       const otherUser = conv.participants.find(
         (p) => p._id.toString() !== userId
       );
@@ -238,14 +211,83 @@ exports.getAllConversations = async (req, res) => {
       };
     });
 
-    res.json({
+    return res.json({
       success: true,
-      conversations: conversationsData,
+      conversations: data,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch conversations",
+      error: error.message,
+    });
+  }
+};
+
+exports.sendGroupMessage = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { groupId } = req.params;
+    const { message } = req.body;
+
+    if (!message?.trim()) {
+      return res.status(400).json({ message: "Message cannot be empty" });
+    }
+
+    const group = await Group.findById(groupId).select("members");
+    if (!group || !group.members.some((id) => id.equals(userId))) {
+      return res.status(403).json({ message: "Not a group member" });
+    }
+
+    const msg = await Message.create({
+      senderId: userId,
+      receiverType: "GROUP",
+      receiverId: groupId,
+      message: message.trim(),
+    });
+
+    const populatedMsg = await Message.findById(msg._id).populate(
+      "senderId",
+      "username profilePicture"
+    );
+
+    global.io?.to(groupId).emit("groupMessage", {
+      message: populatedMsg,
+    });
+
+    return res.status(201).json({ success: true, message: populatedMsg });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send group message",
+      error: error.message,
+    });
+  }
+};
+
+exports.getGroupMessages = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { groupId } = req.params;
+
+    const group = await Group.findById(groupId).select("members");
+    if (!group || !group.members.some((id) => id.equals(userId))) {
+      return res.status(403).json({ message: "Not a group member" });
+    }
+
+    const messages = await Message.find({
+      receiverType: "GROUP",
+      receiverId: groupId,
+    })
+      .populate("senderId", "username profilePicture")
+      .sort({ createdAt: 1 })
+      .limit(100);
+
+    return res.json({ success: true, messages });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch group messages",
       error: error.message,
     });
   }

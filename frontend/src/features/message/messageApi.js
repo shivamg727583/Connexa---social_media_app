@@ -14,3 +14,9 @@ export const deleteChatApi = (userId) => {
 export const getAllConversationsApi = () => {
   return api.get(`/messages/conversations`);
 };
+
+export const sendGroupMessageApi = (groupId, message) =>
+  api.post(`/messages/group/${groupId}`, { message });
+
+export const getGroupMessagesApi = (groupId) =>
+  api.get(`/messages/group/${groupId}`);
