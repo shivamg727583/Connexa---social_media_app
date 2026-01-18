@@ -5,9 +5,14 @@ const { generalLimiter } = require("./middlewares/rateLimiter");
 
 const app = express();
 
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  undefined
+];
+
 const corsOptions = {
   origin: (origin, cb) => {
-    if (!origin || origin === process.env.FRONTEND_URL) {
+    if (allowedOrigins.includes(origin)) {
       cb(null, true);
     } else {
       cb(new Error("Not allowed by CORS"));
@@ -15,6 +20,8 @@ const corsOptions = {
   },
   credentials: true,
 };
+
+
 
 app.use(cors(corsOptions));
 
@@ -29,9 +36,13 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// app.use(generalLimiter);
 
-// app.use(helmet());
+
+app.use("/health", (req, res, next) => next());
+
+app.use(generalLimiter);
+app.use(helmet());
+
 
 
 app.use(express.json());

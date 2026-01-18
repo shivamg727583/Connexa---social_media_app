@@ -7,19 +7,24 @@ const initSocket = require("./socket/socket");
 
 const PORT = process.env.PORT || 5000;
 
+const startServer = async () => {
+  try {
+    await connectDB(); 
 
-connectDB();
+    const server = http.createServer(app);
 
-const server = http.createServer(app);
+    const { io, getReceiverSocketId } = initSocket(server);
 
-const { io, getReceiverSocketId } = initSocket(server);
+    global.io = io;
+    global.getReceiverSocketId = getReceiverSocketId;
 
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
+};
 
-global.io = io;
-global.getReceiverSocketId = getReceiverSocketId;
-
-
-
-server.listen(PORT, () => {
-  console.log("Server running on port 5000");
-});
+startServer();
