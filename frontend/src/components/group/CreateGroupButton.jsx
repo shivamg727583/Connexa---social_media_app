@@ -1,5 +1,5 @@
 import { useState } from "react";
-import CreateGroupModal from "../modals/CreateGroupModal";
+import CreateGroupModal from "@/components/modals/CreateGroupModal";
 import { motion, AnimatePresence } from "framer-motion";
 
 const CreateGroupButton = () => {

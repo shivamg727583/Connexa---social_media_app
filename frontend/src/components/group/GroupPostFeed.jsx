@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PropTypes from "prop-types";
 
 import { fetchGroupPosts } from "@/features/post/postThunks";
-import Post from "@/components/Post";
+import Post from "@/components/posts/Post";
 
 const GroupPostFeed = ({ groupId }) => {
   const dispatch = useDispatch();
@@ -16,7 +16,7 @@ const GroupPostFeed = ({ groupId }) => {
     if (groupId) dispatch(fetchGroupPosts(groupId));
   }, [groupId, dispatch]);
 
-  /* ---------- LOADING ---------- */
+
   if (loading && posts.length === 0) {
     return (
       <div className="flex justify-center items-center py-16">
@@ -25,7 +25,6 @@ const GroupPostFeed = ({ groupId }) => {
     );
   }
 
-  /* ---------- EMPTY ---------- */
   if (posts.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow p-10 text-center">
@@ -40,7 +39,7 @@ const GroupPostFeed = ({ groupId }) => {
     );
   }
 
-  /* ---------- GRID ---------- */
+  
   return (
     <motion.div
       layout
