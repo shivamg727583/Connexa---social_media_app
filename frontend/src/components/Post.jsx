@@ -80,7 +80,7 @@ const Post = ({ post }) => {
       <motion.article
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+        className="w-full bg-white h-full dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
       >
        
         <div className="flex items-center justify-between px-4 py-3">
@@ -130,7 +130,7 @@ const Post = ({ post }) => {
           </DropdownMenu>
         </div>
 
-        {/* Image */}
+        
         <div className="relative w-full bg-black aspect-square">
           <img
             src={image}

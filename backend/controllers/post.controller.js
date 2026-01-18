@@ -4,41 +4,48 @@ const Post = require("../models/post.model");
 const User = require("../models/user.model");
 const Comment = require("../models/comment.model");
 const { createNotification } = require("./notification.controller");
+const Group = require("../models/group.model");
 
 exports.addNewPost = async (req, res) => {
   try {
-    const { caption } = req.body;
-    const image = req.file;
     const userId = req.userId;
+    const image = req.file;
+    const { caption = "", contextType = "USER", contextId = null } = req.body;
 
     if (!image) {
-      return res.status(400).json({
-        success: false,
-        message: "Image is required",
-      });
+      return res
+        .status(400)
+        .json({ success: false, message: "Image is required" });
     }
 
+    if (contextType === "GROUP") {
+      if (!contextId) {
+        return res.status(400).json({ message: "Group id required" });
+      }
+
+      const group = await Group.findById(contextId).select("members");
+      if (!group || !group.members.some((id) => id.equals(userId))) {
+        return res.status(403).json({ message: "Not a group member" });
+      }
+    }
+
+    // Image optimization
     const optimizedImage = await sharp(image.buffer)
       .resize({ width: 800, height: 800, fit: "inside" })
       .jpeg({ quality: 80 })
       .toBuffer();
 
-    const fileUri = `data:image/jpeg;base64,${optimizedImage.toString(
-      "base64"
-    )}`;
-
-    const upload = await cloudinary.uploader.upload(fileUri, {
-      folder: "posts",
-    });
+    const upload = await cloudinary.uploader.upload(
+      `data:image/jpeg;base64,${optimizedImage.toString("base64")}`,
+      { folder: "posts" }
+    );
 
     const post = await Post.create({
       author: userId,
       caption,
       image: upload.secure_url,
-    });
-
-    await User.findByIdAndUpdate(userId, {
-      $push: { posts: post._id },
+      contextType,
+      contextId,
     });
 
     await post.populate("author", "username profilePicture");
@@ -49,10 +56,7 @@ exports.addNewPost = async (req, res) => {
       post,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -84,9 +88,10 @@ exports.getAllPost = async (req, res) => {
     // Add isSaved property to each post based on current user's savedPosts
     const postsWithSaveStatus = posts.map((post) => ({
       ...post,
-      isSaved: user?.savedPosts?.some(
-        (savedPostId) => savedPostId.toString() === post._id.toString()
-      ) || false,
+      isSaved:
+        user?.savedPosts?.some(
+          (savedPostId) => savedPostId.toString() === post._id.toString()
+        ) || false,
     }));
 
     return res.status(200).json({
@@ -121,9 +126,10 @@ exports.getUserPosts = async (req, res) => {
     // Add isSaved property
     const postsWithSaveStatus = posts.map((post) => ({
       ...post,
-      isSaved: user?.savedPosts?.some(
-        (savedPostId) => savedPostId.toString() === post._id.toString()
-      ) || false,
+      isSaved:
+        user?.savedPosts?.some(
+          (savedPostId) => savedPostId.toString() === post._id.toString()
+        ) || false,
     }));
 
     return res.status(200).json({
@@ -159,9 +165,10 @@ exports.getUserPostsById = async (req, res) => {
     // Add isSaved property
     const postsWithSaveStatus = posts.map((post) => ({
       ...post,
-      isSaved: currentUser?.savedPosts?.some(
-        (savedPostId) => savedPostId.toString() === post._id.toString()
-      ) || false,
+      isSaved:
+        currentUser?.savedPosts?.some(
+          (savedPostId) => savedPostId.toString() === post._id.toString()
+        ) || false,
     }));
 
     return res.status(200).json({
@@ -204,9 +211,10 @@ exports.getPostById = async (req, res) => {
     // Add isSaved property
     const postWithSaveStatus = {
       ...post,
-      isSaved: currentUser?.savedPosts?.some(
-        (savedPostId) => savedPostId.toString() === post._id.toString()
-      ) || false,
+      isSaved:
+        currentUser?.savedPosts?.some(
+          (savedPostId) => savedPostId.toString() === post._id.toString()
+        ) || false,
     };
 
     return res.status(200).json({ success: true, post: postWithSaveStatus });
@@ -222,16 +230,16 @@ exports.toggleLikePost = async (req, res) => {
 
     const post = await Post.findById(postId).select("likes author");
     if (!post) {
-      return res.status(404).json({ success: false, message: "Post not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Post not found" });
     }
 
     const isLiked = post.likes.includes(userId);
 
     const updatedPost = await Post.findByIdAndUpdate(
       postId,
-      isLiked
-        ? { $pull: { likes: userId } }
-        : { $addToSet: { likes: userId } },
+      isLiked ? { $pull: { likes: userId } } : { $addToSet: { likes: userId } },
       { new: true }
     ).select("likes");
 
@@ -265,12 +273,16 @@ exports.toggleSavePost = async (req, res) => {
     // Verify post exists
     const postExists = await Post.exists({ _id: postId });
     if (!postExists) {
-      return res.status(404).json({ success: false, message: "Post not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Post not found" });
     }
 
     const user = await User.findById(userId).select("savedPosts");
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const isSaved = user.savedPosts.some(
@@ -288,57 +300,6 @@ exports.toggleSavePost = async (req, res) => {
       success: true,
       postId,
       isSaved: !isSaved,
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-exports.addComment = async (req, res) => {
-  try {
-    const { postId } = req.params;
-    const userId = req.userId;
-    const { text } = req.body;
-
-    if (!text?.trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Comment text required" });
-    }
-
-    const post = await Post.findById(postId).select("author");
-    if (!post) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Post not found" });
-    }
-
-    const comment = await Comment.create({
-      text,
-      author: userId,
-      post: postId,
-    });
-
-    await Post.findByIdAndUpdate(postId, {
-      $push: { comments: comment._id },
-    });
-
-    if (post.author.toString() !== userId) {
-      await createNotification({
-        recipient: post.author,
-        sender: userId,
-        type: "post_comment",
-        message: `commented on your post`,
-        post: postId,
-        comment: comment._id,
-      });
-    }
-
-    await comment.populate("author", "username profilePicture");
-
-    return res.status(201).json({
-      success: true,
-      comment,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -382,6 +343,60 @@ exports.deletePost = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.addComment = async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const userId = req.userId;
+    const { text } = req.body;
+
+    if (!text?.trim()) {
+      return res.status(400).json({ message: "Comment text required" });
+    }
+
+    const post = await Post.findById(postId).select(
+      "author contextType contextId"
+    );
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // 🔐 Group post access check
+    if (post.contextType === "GROUP") {
+      const group = await Group.findById(post.contextId).select("members");
+      if (!group || !group.members.some((id) => id.equals(userId))) {
+        return res.status(403).json({ message: "Not a group member" });
+      }
+    }
+
+    const comment = await Comment.create({
+      text,
+      author: userId,
+      post: postId,
+    });
+
+    await Post.findByIdAndUpdate(postId, {
+      $push: { comments: comment._id },
+    });
+
+    if (!post.author.equals(userId)) {
+      await createNotification({
+        recipient: post.author,
+        sender: userId,
+        type: "post_comment",
+        message: "commented on your post",
+        post: postId,
+        comment: comment._id,
+      });
+    }
+
+    await comment.populate("author", "username profilePicture");
+
+    res.status(201).json({ success: true, comment });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -472,5 +487,79 @@ exports.deleteComment = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+exports.getHomeFeed = async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const user = await User.findById(req.userId).select("savedPosts").lean();
+
+    const posts = await Post.find({ contextType: "USER" })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("author", "username profilePicture")
+      .populate({
+        path: "comments",
+        options: { sort: { createdAt: -1 } },
+        populate: { path: "author", select: "username profilePicture" },
+      })
+      .lean();
+
+    const postsWithSaveStatus = posts.map((post) => ({
+      ...post,
+      isSaved: user?.savedPosts?.some((id) => id.equals(post._id)) || false,
+    }));
+    res.json({ success: true, posts: postsWithSaveStatus });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+exports.getGroupFeed = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { groupId } = req.params;
+
+    const group = await Group.findById(groupId).select("members privacy");
+    
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+
+    const isMember = group.members.some((id) => id.equals(userId));
+    
+    if (group.privacy === "private" && !isMember) {
+      return res.status(403).json({ message: "Not a group member" });
+    }
+
+    const user = await User.findById(userId).select("savedPosts").lean();
+
+    const posts = await Post.find({
+      contextType: "GROUP",
+      contextId: groupId,
+    })
+      .sort({ createdAt: -1 })
+      .populate("author", "username profilePicture")
+      .populate({
+        path: "comments",
+        options: { sort: { createdAt: -1 } },
+        populate: { path: "author", select: "username profilePicture" },
+      })
+      .lean();
+
+    const postsWithSaveStatus = posts.map((post) => ({
+      ...post,
+      isSaved: user?.savedPosts?.some((id) => id.equals(post._id)) || false,
+    }));
+
+    res.json({ success: true, groupId, posts: postsWithSaveStatus });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

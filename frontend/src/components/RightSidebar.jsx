@@ -9,7 +9,7 @@ const RightSidebar = () => {
   if (!user) return null; 
 
   return (
-    <aside className="w-72 my-10 pr-8 flex flex-col gap-6">
+    <aside className="w-72 my-10 pr-8 hidden md:flex flex-col gap-6">
       <Link
         to={`/profile/${user?._id}`}
         className="flex items-center gap-3 hover:bg-gray-100 p-2 rounded-lg transition"

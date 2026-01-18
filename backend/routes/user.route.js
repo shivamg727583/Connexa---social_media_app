@@ -3,9 +3,10 @@ const { register, login, getProfile, editProfile, getSuggestedUsers, getProfileB
 const router = express.Router();
 const isAuthenticated = require('../middlewares/auth.middleware');
 const upload  = require('../middlewares/multer');
+const { authLimiter } = require("../middlewares/rateLimiter");
 
-router.route('/register').post(register);
-router.route('/login').post(login);
+router.route('/register').post(authLimiter, register);
+router.route('/login').post(authLimiter,login);
 router.route('/profile').get(isAuthenticated,getProfile)
 router.route('/:id/profile').get(isAuthenticated, getProfileById);
 router.route('/profile/edit').post(isAuthenticated, upload.single('profilePicture'), editProfile);

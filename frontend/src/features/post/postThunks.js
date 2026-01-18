@@ -11,6 +11,7 @@ import {
   getUserPostsApi,
   getMyPostsApi,
   getPostByIdApi,
+  getGroupPostsApi,
 } from "./postApi";
 import { toast } from "sonner";
 
@@ -129,6 +130,20 @@ export const addComment = createAsyncThunk(
     }
   }
 );
+
+
+export const fetchGroupPosts = createAsyncThunk(
+  "posts/fetchGroupPosts",
+  async (groupId, { rejectWithValue }) => {
+    try {
+      const res = await getGroupPostsApi(groupId);
+      return { groupId, posts: res.data.posts };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { message: "Failed to fetch group posts" });
+    }
+  }
+);
+
 
 export const getComments = createAsyncThunk(
   "posts/getComments",

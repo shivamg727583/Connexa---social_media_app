@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   X,
+  Users,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -31,6 +32,8 @@ const LeftSidebar = () => {
     { icon: Home, text: "Home", path: "/" },
     { icon: Search, text: "Search", path: "/search" },
     { icon: MessageCircle, text: "Messages", path: "/chat" },
+    { icon:Users, text: "Groups", path: "/groups" },
+
     { 
       icon: Bell, 
       text: "Notifications", 
@@ -146,6 +149,14 @@ const LeftSidebar = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/groups")}
+          >
+            <Users className="w-6 h-6" />
+          </Button>
+
           <button
             onClick={() => navigate("/notifications")}
             className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -212,6 +223,7 @@ const LeftSidebar = () => {
             { icon: Search, path: "/search" },
             { icon: PlusSquare, action: () => setCreatePostOpen(true) },
             { icon: MessageCircle, path: "/chat" },
+            
             
           ].map((item, idx) => {
             const Icon = item.icon;

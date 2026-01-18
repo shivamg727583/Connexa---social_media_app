@@ -6,6 +6,8 @@ import message from "@/features/message/messageSlice";
 import friends from "@/features/friends/friendSlice";
 import notifications from "@/features/notification/notificationSlice";
 import search from "@/features/search/searchSlice";
+import group from "@/features/group/groupSlice";
+
 
 const rootReducer = combineReducers({
   auth,
@@ -14,7 +16,7 @@ const rootReducer = combineReducers({
   friends,
   notifications,
   search,
-
+group
 });
 
 export default rootReducer;

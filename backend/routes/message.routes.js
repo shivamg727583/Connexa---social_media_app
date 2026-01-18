@@ -8,16 +8,22 @@ const {
   getMessages,
   deleteChat,
   getAllConversations,
+  sendGroupMessage,
+  getGroupMessages,
 } = require("../controllers/message.controller");
 
-router.route("/conversations").get(isAuthenticated, getAllConversations);
+router.get("/conversations", isAuthenticated, getAllConversations);
 
 router
   .route("/:id")
   .post(isAuthenticated, isFriends, sendMessage)
   .get(isAuthenticated, isFriends, getMessages);
 
+router.delete("/chat/:userId", isAuthenticated, deleteChat);
 
-router.route("/chat/:userId").delete(isAuthenticated, deleteChat);
+router
+  .route("/group/:groupId")
+  .post(isAuthenticated, sendGroupMessage)
+  .get(isAuthenticated, getGroupMessages);
 
 module.exports = router;

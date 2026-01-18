@@ -6,43 +6,60 @@ const upload = require("../middlewares/multer");
 
 const {
   addNewPost,
-  getAllPost,
+  getHomeFeed,
+  getGroupFeed,
   getUserPosts,
   getUserPostsById,
   getPostById,
   deletePost,
-
   toggleLikePost,
   toggleSavePost,
-
   addComment,
   getCommentsOfPost,
   deleteComment,
 } = require("../controllers/post.controller");
 
-router
-  .route("/")
-  .post(isAuthenticated, upload.single("image"), addNewPost)
-  .get(isAuthenticated, getAllPost);
 
-router.route("/me").get(isAuthenticated, getUserPosts);
+router.post(
+  "/",
+  isAuthenticated,
+  upload.single("image"),
+  addNewPost
+);
 
-router.route("/user/:userId").get(isAuthenticated, getUserPostsById);
+
+router.get("/", isAuthenticated, getHomeFeed);
+
+router.get(
+  "/group/:groupId",
+  isAuthenticated,
+  getGroupFeed
+);
+
+
+router.get("/me", isAuthenticated, getUserPosts);
+
+
+router.get("/user/:userId", isAuthenticated, getUserPostsById);
+
 
 router
   .route("/:postId")
   .get(isAuthenticated, getPostById)
   .delete(isAuthenticated, deletePost);
 
-router.route("/:postId/like").put(isAuthenticated, toggleLikePost);
-
-router.route("/:postId/save").put(isAuthenticated, toggleSavePost);
+router.put("/:postId/like", isAuthenticated, toggleLikePost);
+router.put("/:postId/save", isAuthenticated, toggleSavePost);
 
 router
   .route("/:postId/comments")
   .post(isAuthenticated, addComment)
   .get(isAuthenticated, getCommentsOfPost);
 
-router.route("/comments/:commentId").delete(isAuthenticated, deleteComment);
+router.delete(
+  "/comments/:commentId",
+  isAuthenticated,
+  deleteComment
+);
 
 module.exports = router;
