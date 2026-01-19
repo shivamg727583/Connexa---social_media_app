@@ -10,6 +10,7 @@ import { registerUser } from "@/features/auth/authThunks";
 const Signup = () => {
   const [form, setForm] = useState({ username: "", email: "", password: "" });
   const { loading, isAuthenticated } = useSelector((state) => state.auth);
+  const isLoading = loading.register;
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -52,8 +53,8 @@ const Signup = () => {
               <Input type="password" placeholder="Create a password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="h-11 sm:h-12" required minLength={3} />
             </div>
 
-            <Button type="submit" className="w-full h-11 sm:h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="w-full h-11 sm:h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold" disabled={isLoading}>
+              {isLoading ? (
                 <>
                   <Loader2 className="animate-spin mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                   Creating account...

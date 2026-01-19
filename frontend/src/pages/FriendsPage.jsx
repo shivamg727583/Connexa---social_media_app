@@ -9,7 +9,6 @@ import { fetchFriends } from "@/features/friends/friendThunks";
 import { PageContainer, PageHeader, ContentWrapper, LoadingSpinner, EmptyState } from "@/components/shared/PageLayout";
 
 
-
 const FriendsPage = () => {
   const dispatch = useDispatch();
   const { id } = useParams();
@@ -43,7 +42,7 @@ const FriendsPage = () => {
     [processedFriends, search]
   );
 
-  const isLoading = loading || friendsLoading;
+  const isLoading = loading.profile || friendsLoading;
 
   return (
     <PageContainer>

@@ -14,6 +14,7 @@ const EditProfile = () => {
   const navigate = useNavigate();
   const imageRef = useRef();
   const { user, loading } = useSelector((s) => s.auth);
+  const isLoading = loading.editProfile;
   const [form, setForm] = useState({ bio: user?.bio || "", gender: user?.gender || "", profilePhoto: null });
 
   const fileChangeHandler = (e) => {
@@ -82,8 +83,8 @@ const EditProfile = () => {
         </div>
 
         <div className="flex justify-end">
-          <Button onClick={submitHandler} disabled={loading} className="min-w-[100px] sm:min-w-[120px] text-sm sm:text-base">
-            {loading ? (
+          <Button onClick={submitHandler} disabled={isLoading} className="min-w-[100px] sm:min-w-[120px] text-sm sm:text-base">
+            {isLoading ? (
               <>
                 <Loader2 className="mr-2 animate-spin w-4 h-4" />
                 Saving

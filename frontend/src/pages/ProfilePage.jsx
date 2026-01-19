@@ -21,7 +21,8 @@ import ProfileStats from "@/components/profile/ProfileStats";
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { user, userProfile, loading: profileLoading } = useSelector((state) => state.auth);
+  const { user, userProfile ,loading} = useSelector((state) => state.auth);
+  const profileLoading = loading.profile;
   const { posts } = useSelector((state) => state.post);
 
   const [activeTab, setActiveTab] = useState("posts");
