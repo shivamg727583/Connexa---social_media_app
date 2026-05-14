@@ -1,34 +1,44 @@
 import { useSelector } from "react-redux";
 
 export const useFriendStatus = () => {
-  const { myFriends, requests, sentRequests } = useSelector(
+  const { user } = useSelector((state) => state.auth);
+
+  const { requests, sentRequests } = useSelector(
     (state) => state.friends
   );
 
   return (targetUserId) => {
     if (!targetUserId) return "follow";
 
-    if (myFriends?.some(f => f._id === targetUserId)) {
+
+    const isFriend = user?.friends?.some(
+      (friendId) => String(friendId) === String(targetUserId)
+    );
+
+    if (isFriend) {
       return "friends";
     }
 
-    if (
-      sentRequests?.some(
-        r => r.to === targetUserId || r.to?._id === targetUserId
-      )
-    ){
+    // SENT REQUEST
+    const hasSentRequest = sentRequests?.some(
+      (request) =>
+        String(request?.to?._id || request?.to) === String(targetUserId)
+    );
+
+    if (hasSentRequest) {
       return "requested";
     }
 
-    if (
-      requests?.some(
-        r => r.from === targetUserId || r.from?._id === targetUserId
-      )
-    ) {
+    // RECEIVED REQUEST
+    const hasReceivedRequest = requests?.some(
+      (request) =>
+        String(request?.from?._id || request?.from) === String(targetUserId)
+    );
+
+    if (hasReceivedRequest) {
       return "accept";
     }
 
     return "follow";
   };
 };
-

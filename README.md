@@ -68,6 +68,134 @@ This project includes:
 - `src/redux/` — store setup and root reducer
 - `src/services/` — API client and socket client
 
+
+## ER Diagram of DB
+```mermaid
+erDiagram
+  USER {
+    ObjectId _id PK
+    string username UK
+    string email UK
+    string password
+    string profilePicture
+    string bio
+    string gender
+    ObjectId[] friends
+    number totalFriends
+    ObjectId[] posts
+    ObjectId[] savedPosts
+    Date createdAt
+    Date updatedAt
+  }
+
+  POST {
+    ObjectId _id PK
+    string caption
+    string image
+    ObjectId author FK
+    string contextType "USER or GROUP"
+    ObjectId contextId "UserId or GroupId"
+    ObjectId[] likes
+    ObjectId[] comments
+    Date createdAt
+    Date updatedAt
+  }
+
+  COMMENT {
+    ObjectId _id PK
+    string text
+    ObjectId author FK
+    ObjectId post FK
+    Date createdAt
+    Date updatedAt
+  }
+
+  FRIEND_REQUEST {
+    ObjectId _id PK
+    ObjectId from FK
+    ObjectId to FK
+    string status "pending accepted rejected"
+    Date createdAt
+    Date updatedAt
+  }
+
+  GROUP {
+    ObjectId _id PK
+    string name
+    string description
+    string avatar
+    string coverImage
+    ObjectId adminId FK
+    ObjectId[] members
+    ObjectId[] joinRequests
+    string privacy "public private"
+    Date createdAt
+    Date updatedAt
+  }
+
+  CONVERSATION {
+    ObjectId _id PK
+    ObjectId[] participants
+    ObjectId lastMessage FK
+    ObjectId[] deletedBy
+    Map clearedAt
+    Date createdAt
+    Date updatedAt
+  }
+
+  MESSAGE {
+    ObjectId _id PK
+    ObjectId conversationId FK
+    ObjectId senderId FK
+    string receiverType "USER or GROUP"
+    ObjectId receiverId "UserId or GroupId"
+    string message
+    Date createdAt
+    Date updatedAt
+  }
+
+  NOTIFICATION {
+    ObjectId _id PK
+    ObjectId recipient FK
+    ObjectId sender FK
+    string type
+    ObjectId post FK
+    ObjectId comment FK
+    ObjectId friendRequest FK
+    boolean read
+    string message
+    Date createdAt
+    Date updatedAt
+  }
+
+  USER ||--o{ POST : creates
+  USER ||--o{ COMMENT : writes
+  POST ||--o{ COMMENT : has
+
+  USER }o--o{ POST : likes
+  USER }o--o{ POST : saves
+  USER }o--o{ USER : friends
+
+  USER ||--o{ FRIEND_REQUEST : sends
+  USER ||--o{ FRIEND_REQUEST : receives
+
+  USER ||--o{ GROUP : admins
+  USER }o--o{ GROUP : members
+  USER }o--o{ GROUP : join_requests
+
+  USER }o--o{ CONVERSATION : participates
+  CONVERSATION ||--o{ MESSAGE : contains
+  MESSAGE }o--|| USER : sent_by
+  CONVERSATION ||--o| MESSAGE : last_message
+
+  USER ||--o{ NOTIFICATION : receives
+  USER ||--o{ NOTIFICATION : sends
+  POST ||--o{ NOTIFICATION : related_post
+  COMMENT ||--o{ NOTIFICATION : related_comment
+  FRIEND_REQUEST ||--o{ NOTIFICATION : related_request
+
+```
+
 ## ⚙️ Environment Variables
 
 Create a `.env` file in `backend/` using the following values from `.env.example`:

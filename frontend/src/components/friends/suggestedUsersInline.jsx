@@ -1,29 +1,84 @@
 import { memo } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import SuggestedUserCard from "@/components/friends/SuggestedUserCard";
+import { ChevronRight } from "lucide-react";
 
-
+import SuggestedUserInlineCard from "@/components/friends/SuggestedUserInlineCard";
 const SuggestedUsersInline = memo(() => {
   const { suggestedUsers } = useSelector((store) => store.auth);
 
   if (!suggestedUsers?.length) return null;
 
   return (
-    <div className="xl:hidden bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-3 sm:p-4 my-4 sm:my-6">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-sm font-semibold">Suggested for you</h2>
-        <Link to="/suggested" className="text-xs font-medium text-blue-500 hover:text-blue-600">
-          View all
+    <section
+      className="
+        xl:hidden
+        relative
+        my-6
+        sm:my-8
+      "
+    >
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-1 mb-4">
+        <div>
+          <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white">
+            Suggested for you
+          </h2>
+
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Discover people you may know
+          </p>
+        </div>
+
+        <Link
+          to="/suggested"
+          className="
+            flex
+            items-center
+            gap-1
+            text-sm
+            font-medium
+            text-purple-600
+            hover:text-purple-700
+            dark:text-purple-400
+            dark:hover:text-purple-300
+            transition-colors
+          "
+        >
+          See all
+          <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
 
-      <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        {suggestedUsers.slice(0, 6).map((user) => (
-          <SuggestedUserCard key={user._id} user={user} />
+      {/* HORIZONTAL SCROLL */}
+      <div
+        className="
+          flex
+          gap-4
+          overflow-x-auto
+          scrollbar-hide
+          snap-x
+          snap-mandatory
+          pb-2
+          -mx-1
+          px-1
+        "
+      >
+        {suggestedUsers.slice(0, 10).map((user) => (
+          <div
+            key={user._id}
+            className="
+              min-w-[260px]
+              max-w-[260px]
+              snap-start
+              flex-shrink-0
+            "
+          >
+            <SuggestedUserInlineCard user={user} />
+          </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 });
 

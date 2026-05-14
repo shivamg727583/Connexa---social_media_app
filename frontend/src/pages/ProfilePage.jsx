@@ -53,6 +53,7 @@ import ProfileStats from "@/components/profile/ProfileStats";
   const friendStatus = getFriendStatus(userProfile?._id);
   const buttonText = getButtonText(userProfile?._id);
 
+
   const handleFriendAction = () => {
     if (friendStatus === "follow") {
       dispatch(sendFriendRequest({ to: id }));
@@ -133,6 +134,7 @@ import ProfileStats from "@/components/profile/ProfileStats";
               friends={userProfile?.friends?.length || 0}
               saved={savedPosts.length}
               isOwnProfile={isOwnProfile}
+              userId={userProfile?._id}
             />
 
             {userProfile?.bio && (

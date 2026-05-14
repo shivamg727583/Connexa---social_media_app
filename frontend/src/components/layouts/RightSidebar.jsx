@@ -13,7 +13,7 @@ const SuggestedUsers = lazy(() => import("@/components/friends/SuggestedUsers"))
   if (!user) return null;
 
   return (
-    <aside className="w-60 lg:w-72 my-6 lg:my-10 pr-4 lg:pr-8 hidden lg:flex flex-col gap-4 lg:gap-6 sticky top-6">
+    <aside className="w-60 lg:w-72 my-6 lg:my-10 pr-4 lg:pr-8  hidden lg:flex flex-col gap-4 lg:gap-6 sticky top-6">
       <Link
         to={`/profile/${user?._id}`}
         className="flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-lg transition"

@@ -1,30 +1,41 @@
 import { useSelector } from "react-redux";
 
 export const useButtonText = () => {
-  const { myFriends, requests, sentRequests } = useSelector(
+  const { user } = useSelector((state) => state.auth);
+
+  const { requests, sentRequests } = useSelector(
     (state) => state.friends
   );
 
   return (targetUserId) => {
     if (!targetUserId) return "Follow";
 
-    if (myFriends?.some(f => f._id === targetUserId)) {
+    // FRIENDS
+    const isFriend = user?.friends?.some(
+      (friendId) => String(friendId) === String(targetUserId)
+    );
+
+    if (isFriend) {
       return "Message";
     }
 
-    if (
-      sentRequests?.some(
-        r => r.to === targetUserId || r.to?._id === targetUserId
-      )
-    ) {
+    // SENT REQUEST
+    const hasSentRequest = sentRequests?.some(
+      (request) =>
+        String(request?.to?._id || request?.to) === String(targetUserId)
+    );
+
+    if (hasSentRequest) {
       return "Requested";
     }
 
-    if (
-      requests?.some(
-        r => r.from === targetUserId || r.from?._id === targetUserId
-      )
-    ) {
+    // RECEIVED REQUEST
+    const hasReceivedRequest = requests?.some(
+      (request) =>
+        String(request?.from?._id || request?.from) === String(targetUserId)
+    );
+
+    if (hasReceivedRequest) {
       return "Accept";
     }
 

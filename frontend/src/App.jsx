@@ -12,7 +12,6 @@ import Signup from "./components/auth/Signup";
 import NotificationsPage from "./pages/NotificationPage";
 import FriendsPage from "./pages/FriendsPage";
 import SearchPage from "./pages/SearchPage";
-
 import {
   fetchIncomingRequests,
   fetchSentRequests,
@@ -31,6 +30,7 @@ import SuggestedUsersPage from "./pages/SuggestedUserPage";
 import GroupsPage from "./pages/GroupPage";
 import GroupDetailPage from "./pages/GroupDetailPage";
 import { fetchAllPosts } from "./features/post/postThunks";
+import { getSuggestedUsers } from "./features/auth/authThunks";
 
 const router = createBrowserRouter([
   {
@@ -84,6 +84,7 @@ const App = () => {
     dispatch(fetchSentRequests());
     dispatch(fetchAllPosts())
     dispatch(fetchNotifications({ page: 1, limit: 20 }));
+    dispatch(getSuggestedUsers());
     dispatch(fetchAllConversations());
   }, [dispatch, user?._id]);
 

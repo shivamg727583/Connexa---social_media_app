@@ -63,7 +63,7 @@ exports.getNotifications = async (req, res) => {
     const limit = Number(req.query.limit) || 20;
     const skip = (page - 1) * limit;
 
-    const notifications = await notificationModel
+    const notifications =  await notificationModel
       .find({ recipient: userId })
       .sort({ createdAt: -1 })
       .skip(skip)

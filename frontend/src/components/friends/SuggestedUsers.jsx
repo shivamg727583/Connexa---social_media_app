@@ -40,8 +40,9 @@ const SuggestedUsers = memo(() => {
 
   if (!suggestedUsers?.length) return null;
 
+
   return (
-    <div className="my-6 sm:my-10">
+    <div className="my-6 sm:my-10 ">
       <div className="flex items-center justify-between text-xs sm:text-sm mb-3 sm:mb-4">
         <h1 className="font-semibold text-gray-600 dark:text-gray-400">Suggested for you</h1>
         <Link to="/suggested" className="font-medium cursor-pointer hover:text-gray-800 dark:hover:text-gray-200 transition-colors">
